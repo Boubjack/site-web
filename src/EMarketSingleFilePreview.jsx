@@ -6,6 +6,9 @@ import { colorToHex } from "./lib/colors.js";
 
 const categories = ["Tous", "Homme", "Femme", "Unisexe", "Chaussures", "Accessoires", "Services"];
 
+const BIRTH_MONTHS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+const BIRTH_YEARS = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i);
+
 const text = {
   FR: {
     chooseSpace: "Choisissez votre espace",
@@ -216,12 +219,19 @@ function ProductCard({ product, t, favorites, onFavorite, onAdd }) {
 function AuthModal({ t, role, setOpenShop, setShowAuth, setSellerDashboard, setShopAnimation, onAuthenticated }) {
   const [authMode, setAuthMode] = useState("login");
   const [form, setForm] = useState({ firstName: "", lastName: "", birthDate: "", gender: "", email: "", password: "", username: "", shopName: "", phone: "", city: "", terms: false, privacy: false });
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthYear, setBirthYear] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const u = (k, v) => {
     setForm((p) => ({ ...p, [k]: v }));
     setError("");
+  };
+
+  const updateBirthDate = (day, month, year) => {
+    u("birthDate", day && month && year ? `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` : "");
   };
 
   const submit = async () => {
@@ -262,13 +272,36 @@ function AuthModal({ t, role, setOpenShop, setShowAuth, setSellerDashboard, setS
                 <input value={form.firstName} onChange={(e) => u("firstName", e.target.value)} placeholder={t.firstName} className="rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none" />
                 <input value={form.lastName} onChange={(e) => u("lastName", e.target.value)} placeholder={t.lastName} className="rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none" />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                  <label className="absolute left-5 top-3 text-xs font-bold uppercase tracking-[.25em] text-zinc-500">Date de naissance</label>
-                  <input value={form.birthDate} onChange={(e) => u("birthDate", e.target.value)} type="date" className="w-full bg-transparent px-5 pb-4 pt-8 text-white outline-none [color-scheme:dark]" />
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-[.25em] text-zinc-500">Date de naissance</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <select
+                    value={birthDay}
+                    onChange={(e) => { setBirthDay(e.target.value); updateBirthDate(e.target.value, birthMonth, birthYear); }}
+                    className="rounded-2xl border border-white/10 bg-black/40 px-3 py-4 outline-none"
+                  >
+                    <option value="">Jour</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <select
+                    value={birthMonth}
+                    onChange={(e) => { setBirthMonth(e.target.value); updateBirthDate(birthDay, e.target.value, birthYear); }}
+                    className="rounded-2xl border border-white/10 bg-black/40 px-3 py-4 outline-none"
+                  >
+                    <option value="">Mois</option>
+                    {BIRTH_MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                  </select>
+                  <select
+                    value={birthYear}
+                    onChange={(e) => { setBirthYear(e.target.value); updateBirthDate(birthDay, birthMonth, e.target.value); }}
+                    className="rounded-2xl border border-white/10 bg-black/40 px-3 py-4 outline-none"
+                  >
+                    <option value="">Année</option>
+                    {BIRTH_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
                 </div>
-                <select value={form.gender} onChange={(e) => u("gender", e.target.value)} className="rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none"><option value="">{t.gender}</option><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></select>
               </div>
+              <select value={form.gender} onChange={(e) => u("gender", e.target.value)} className="rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none"><option value="">{t.gender}</option><option>{t.male}</option><option>{t.female}</option><option>{t.other}</option></select>
             </>
           )}
           <input value={form.email} onChange={(e) => u("email", e.target.value)} placeholder={t.email} className="w-full rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none" />

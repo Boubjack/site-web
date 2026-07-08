@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Menu, Search, ShoppingBag, Sparkles, Star, User, X, Bot, ShieldCheck } from "lucide-react";
 import { apiFetch, fileToBase64 } from "./lib/api.js";
 import { colorToHex } from "./lib/colors.js";
+import LegalModal from "./LegalModal.jsx";
 
 const categories = ["Tous", "Homme", "Femme", "Unisexe", "Chaussures", "Accessoires", "Services"];
 
@@ -224,6 +225,7 @@ function AuthModal({ t, role, setOpenShop, setShowAuth, setSellerDashboard, setS
   const [birthYear, setBirthYear] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [legalModal, setLegalModal] = useState(null);
 
   const u = (k, v) => {
     setForm((p) => ({ ...p, [k]: v }));
@@ -261,6 +263,7 @@ function AuthModal({ t, role, setOpenShop, setShowAuth, setSellerDashboard, setS
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-[999] flex items-center justify-center overflow-hidden bg-black p-5">
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[2.5rem] border border-white/10 bg-white/[.05] p-8 text-white">
         <p className="text-xs uppercase tracking-[.4em] text-zinc-500">{role === "client" ? t.client : t.seller}</p>
@@ -318,8 +321,14 @@ function AuthModal({ t, role, setOpenShop, setShowAuth, setSellerDashboard, setS
                   </div>
                 </>
               )}
-              <label className="flex gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm"><input type="checkbox" checked={form.terms} onChange={(e) => u("terms", e.target.checked)} />{t.terms}</label>
-              <label className="flex gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm"><input type="checkbox" checked={form.privacy} onChange={(e) => u("privacy", e.target.checked)} />{t.privacy}</label>
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm">
+                <input type="checkbox" className="mt-0.5" checked={form.terms} onChange={(e) => u("terms", e.target.checked)} />
+                <span>J'accepte les <button type="button" onClick={() => setLegalModal("terms")} className="underline decoration-dotted underline-offset-2 hover:text-white">conditions générales d'utilisation</button>.</span>
+              </div>
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm">
+                <input type="checkbox" className="mt-0.5" checked={form.privacy} onChange={(e) => u("privacy", e.target.checked)} />
+                <span>J'accepte la <button type="button" onClick={() => setLegalModal("privacy")} className="underline decoration-dotted underline-offset-2 hover:text-white">politique de confidentialité</button>.</span>
+              </div>
             </>
           )}
           {error && <p className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
@@ -328,6 +337,8 @@ function AuthModal({ t, role, setOpenShop, setShowAuth, setSellerDashboard, setS
         <button onClick={() => setAuthMode(authMode === "login" ? "register" : "login")} className="mt-5 w-full text-sm text-zinc-400 hover:text-white">{authMode === "login" ? t.noAccount : t.alreadyAccount}</button>
       </div>
     </div>
+    {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
+    </>
   );
 }
 
@@ -1026,6 +1037,7 @@ export default function EMarketSingleFilePreview() {
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [rawProducts, setRawProducts] = useState([]);
   const [notice, setNotice] = useState("");
+  const [legalModal, setLegalModal] = useState(null);
 
   const loadCatalog = () => {
     apiFetch("/api/products").then(({ products }) => setRawProducts(products)).catch(() => setRawProducts([]));
@@ -1214,6 +1226,7 @@ export default function EMarketSingleFilePreview() {
           <button onClick={() => setComingSoon("")} className="mt-2 text-xs text-zinc-400 underline">Fermer</button>
         </div>
       )}
+      {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
 
       <main className="relative min-h-screen pt-28">
         <section className="relative mx-auto max-w-7xl px-5 pb-16 pt-10">
@@ -1225,6 +1238,16 @@ export default function EMarketSingleFilePreview() {
           <section className="mt-16 rounded-[2.5rem] bg-white px-6 py-14 text-black md:px-10"><p className="text-center text-xs font-black uppercase tracking-[.3em] text-orange-600">{t.how}</p><h2 className="mt-3 text-center text-4xl font-black tracking-tight md:text-5xl">{t.simple}</h2>{role === "vendeur" ? <div className="mt-10 rounded-[2rem] border border-black/10 bg-orange-50 p-7"><p className="text-xs uppercase tracking-[.35em] text-orange-600">VENDEUR</p><h3 className="mt-3 text-3xl font-black text-black">Mettre ses produits en vente</h3><div className="mt-6 space-y-4"><div className="rounded-2xl border border-black/10 bg-white p-4"><span className="text-sm font-black text-black">1.</span><p className="mt-2 text-zinc-700">Créer un compte vendeur professionnel.</p></div><div className="rounded-2xl border border-black/10 bg-white p-4"><span className="text-sm font-black text-black">2.</span><p className="mt-2 text-zinc-700">Ajouter les produits avec photos, tailles, couleurs et prix.</p></div><div className="rounded-2xl border border-black/10 bg-white p-4"><span className="text-sm font-black text-black">3.</span><p className="mt-2 text-zinc-700">Les produits apparaissent automatiquement dans la boutique.</p></div><div className="rounded-2xl border border-black/10 bg-white p-4"><span className="text-sm font-black text-black">4.</span><p className="mt-2 text-zinc-700">L’équipe E‑Market gère tout à votre place : livraison, ventes, suivi et assistance. Vous avez juste à envoyer votre produit ou un vendeur E‑Market vient le récupérer.</p></div></div></div> : <div className="mt-10 rounded-[2rem] bg-black p-7 text-white"><p className="text-xs uppercase tracking-[.35em] text-zinc-500">CLIENT</p><h3 className="mt-3 text-3xl font-black">Acheter facilement</h3><div className="mt-6 space-y-4"><div className="rounded-2xl border border-white/10 bg-white/[.05] p-4"><span className="text-sm font-black">1.</span><p className="mt-2 text-zinc-300">Créer un compte ou se connecter.</p></div><div className="rounded-2xl border border-white/10 bg-white/[.05] p-4"><span className="text-sm font-black">2.</span><p className="mt-2 text-zinc-300">Découvrir les produits et choisir tailles/couleurs.</p></div><div className="rounded-2xl border border-white/10 bg-white/[.05] p-4"><span className="text-sm font-black">3.</span><p className="mt-2 text-zinc-300">Ajouter au panier et commander en sécurité.</p></div><div className="rounded-2xl border border-white/10 bg-white/[.05] p-4"><span className="text-sm font-black">4.</span><p className="mt-2 text-zinc-300">Le client doit ensuite confirmer son nom, son adresse complète et son numéro de téléphone afin que l’équipe E‑Market puisse assurer une livraison rapide et sécurisée.</p></div></div></div>}</section>
         </section>
       </main>
+
+      <footer className="border-t border-white/10 bg-black/60 px-5 py-10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 text-center text-sm text-zinc-500 md:flex-row md:justify-between md:text-left">
+          <p>© {new Date().getFullYear()} E‑Market — plateforme de vente en ligne malienne.</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <button onClick={() => setLegalModal("terms")} className="hover:text-white">Conditions générales d'utilisation</button>
+            <button onClick={() => setLegalModal("privacy")} className="hover:text-white">Politique de confidentialité</button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -22,13 +22,34 @@ const startBtn = document.getElementById("start-btn");
 
 // ---------- Renderer / scene / camera ----------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fd0ff);
-scene.fog = new THREE.Fog(0x8fd0ff, 60, 140);
 
-const camera = new THREE.PerspectiveCamera(60, 900 / 560, 0.1, 300);
+function createSkyTexture() {
+  const c = document.createElement("canvas");
+  c.width = 2; c.height = 256;
+  const ctx = c.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, "#1c5fae");
+  grad.addColorStop(0.45, "#5fa8dd");
+  grad.addColorStop(0.75, "#bfe0f2");
+  grad.addColorStop(1, "#e9f4fa");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 2, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+scene.background = createSkyTexture();
+scene.fog = new THREE.Fog(0x9cc9e8, 70, 155);
+
+const camera = new THREE.PerspectiveCamera(58, 900 / 560, 0.1, 300);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 container.appendChild(renderer.domElement);
 
 function resize() {
@@ -41,10 +62,47 @@ function resize() {
 window.addEventListener("resize", resize);
 
 // ---------- Lights ----------
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-sun.position.set(30, 50, 20);
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x1c3a20, 0.65);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3d6, 1.65);
+sun.position.set(35, 55, 25);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -(FIELD_HALF_X + 8);
+sun.shadow.camera.right = FIELD_HALF_X + 8;
+sun.shadow.camera.top = FIELD_HALF_Z + 8;
+sun.shadow.camera.bottom = -(FIELD_HALF_Z + 8);
+sun.shadow.camera.near = 10;
+sun.shadow.camera.far = 120;
+sun.shadow.bias = -0.0015;
 scene.add(sun);
+scene.add(sun.target);
+
+function buildFloodlight(x, z) {
+  const group = new THREE.Group();
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.5 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 22, 8), poleMat);
+  pole.position.y = 11;
+  pole.castShadow = true;
+  const headMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.4, roughness: 0.6 });
+  const head = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.4, 1), headMat);
+  head.position.y = 22.5;
+  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff6d0, emissive: 0xfff6d0, emissiveIntensity: 1.4 });
+  for (let i = -1; i <= 1; i++) {
+    for (let j = 0; j < 2; j++) {
+      const bulb = new THREE.Mesh(new THREE.CircleGeometry(0.4, 10), bulbMat);
+      bulb.position.set(i * 1.4, 22.5 + (j === 0 ? 0.7 : -0.7), 0.51);
+      group.add(bulb);
+    }
+  }
+  group.add(pole, head);
+  group.position.set(x, 0, z);
+  group.lookAt(0, 10, 0);
+  return group;
+}
+[[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+  scene.add(buildFloodlight(sx * (FIELD_HALF_X + 12), sz * (FIELD_HALF_Z + 10)));
+});
 
 // ---------- Pitch ----------
 function createPitchTexture() {
@@ -103,32 +161,93 @@ function createPitchTexture() {
     ctx.fill();
   });
 
+  const cornerR = toX(2) - toX(0);
+  [[-FIELD_HALF_X, -FIELD_HALF_Z, 0, Math.PI / 2], [-FIELD_HALF_X, FIELD_HALF_Z, -Math.PI / 2, 0],
+   [FIELD_HALF_X, -FIELD_HALF_Z, Math.PI / 2, Math.PI], [FIELD_HALF_X, FIELD_HALF_Z, Math.PI, Math.PI * 1.5]]
+    .forEach(([cx, cz, a0, a1]) => {
+      ctx.beginPath();
+      ctx.arc(toX(cx), toY(cz), cornerR, a0, a1);
+      ctx.stroke();
+    });
+
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = 8;
   return tex;
 }
 
-const pitchMat = new THREE.MeshStandardMaterial({ map: createPitchTexture(), roughness: 1 });
+const pitchMat = new THREE.MeshStandardMaterial({ map: createPitchTexture(), roughness: 0.95 });
 const pitch = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_HALF_X * 2 + 4, FIELD_HALF_Z * 2 + 4), pitchMat);
 pitch.rotation.x = -Math.PI / 2;
+pitch.receiveShadow = true;
 scene.add(pitch);
 
-function buildGoal(sideSign, color) {
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x0f4522, roughness: 1 });
+const ground = new THREE.Mesh(new THREE.CircleGeometry(140, 48), groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function crowdTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 96;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#12141c";
+  ctx.fillRect(0, 0, 512, 96);
+  const palette = ["#e5533c", "#f2c14e", "#4f8fd1", "#e8e8e8", "#3c9d6b", "#a259c9"];
+  for (let y = 6; y < 96; y += 9) {
+    for (let x = (y % 18 === 0 ? 0 : 5); x < 512; x += 10) {
+      ctx.fillStyle = palette[(x * 7 + y * 13) % palette.length];
+      ctx.fillRect(x, y, 5, 6);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function buildStand(length, x, z, rotY) {
   const group = new THREE.Group();
-  const postMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  const postGeo = new THREE.CylinderGeometry(0.12, 0.12, GOAL_HEIGHT, 10);
+  const wallMat = new THREE.MeshStandardMaterial({ map: crowdTexture(), roughness: 1 });
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(length, 10, 3), wallMat);
+  wall.position.y = 5;
+  wall.rotation.x = -0.12;
+  wall.castShadow = false;
+  wall.receiveShadow = true;
+
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.6, metalness: 0.2 });
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(length + 1.5, 0.5, 5.5), roofMat);
+  roof.position.set(0, 10.6, -1.2);
+  roof.rotation.x = -0.12;
+
+  group.add(wall, roof);
+  group.position.set(x, 0, z);
+  group.rotation.y = rotY;
+  return group;
+}
+scene.add(buildStand(FIELD_HALF_X * 2 + 14, 0, -(FIELD_HALF_Z + 13), 0));
+scene.add(buildStand(FIELD_HALF_X * 2 + 14, 0, FIELD_HALF_Z + 13, Math.PI));
+scene.add(buildStand(FIELD_HALF_Z * 2 + 14, FIELD_HALF_X + 15, 0, -Math.PI / 2));
+scene.add(buildStand(FIELD_HALF_Z * 2 + 14, -(FIELD_HALF_X + 15), 0, Math.PI / 2));
+
+function buildGoal(sideSign) {
+  const group = new THREE.Group();
+  const postMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.35, metalness: 0.1 });
+  const postGeo = new THREE.CylinderGeometry(0.12, 0.12, GOAL_HEIGHT, 12);
 
   const left = new THREE.Mesh(postGeo, postMat);
   left.position.set(0, GOAL_HEIGHT / 2, -GOAL_HALF_WIDTH);
   const right = new THREE.Mesh(postGeo, postMat);
   right.position.set(0, GOAL_HEIGHT / 2, GOAL_HALF_WIDTH);
 
-  const barGeo = new THREE.CylinderGeometry(0.12, 0.12, GOAL_HALF_WIDTH * 2, 10);
+  const barGeo = new THREE.CylinderGeometry(0.12, 0.12, GOAL_HALF_WIDTH * 2, 12);
   const bar = new THREE.Mesh(barGeo, postMat);
   bar.rotation.z = Math.PI / 2;
   bar.position.set(0, GOAL_HEIGHT, 0);
 
-  const netMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, wireframe: true });
+  [left, right, bar].forEach((m) => { m.castShadow = true; m.receiveShadow = true; });
+
+  const netMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, wireframe: true });
   const net = new THREE.Mesh(new THREE.BoxGeometry(GOAL_DEPTH, GOAL_HEIGHT, GOAL_HALF_WIDTH * 2, 6, 6, 6), netMat);
   net.position.set(-sideSign * GOAL_DEPTH / 2, GOAL_HEIGHT / 2, 0);
 
@@ -140,31 +259,91 @@ scene.add(buildGoal(1));
 scene.add(buildGoal(-1));
 
 // ---------- Entities ----------
-function makePlayerMesh(color) {
+function makePlayerMesh(kit) {
   const g = new THREE.Group();
-  const bodyGeo = THREE.CapsuleGeometry
-    ? new THREE.CapsuleGeometry(PLAYER_RADIUS, 1.1, 4, 8)
-    : new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1.7, 8);
-  const body = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({ color }));
-  body.position.y = 1.1;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), new THREE.MeshStandardMaterial({ color: 0xffd9b3 }));
-  head.position.y = 1.95;
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 8), new THREE.MeshStandardMaterial({ color: 0xffe066 }));
-  nose.rotation.x = Math.PI / 2;
-  nose.position.set(0, 1.1, 0.6);
-  g.add(body, head, nose);
+  const jerseyMat = new THREE.MeshStandardMaterial({ color: kit.jersey, roughness: 0.7 });
+  const shortsMat = new THREE.MeshStandardMaterial({ color: kit.shorts, roughness: 0.7 });
+  const sockMat = new THREE.MeshStandardMaterial({ color: kit.socks, roughness: 0.7 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8b48a, roughness: 0.8 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: kit.hair, roughness: 0.9 });
+
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.62, 0.36), jerseyMat);
+  torso.position.y = 1.36;
+
+  const shorts = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.3, 0.4), shortsMat);
+  shorts.position.y = 0.95;
+
+  const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.78, 8);
+  const legL = new THREE.Mesh(legGeo, sockMat);
+  legL.position.set(-0.17, 0.4, 0);
+  const legR = new THREE.Mesh(legGeo, sockMat);
+  legR.position.set(0.17, 0.4, 0);
+
+  const armGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.55, 8);
+  const armL = new THREE.Mesh(armGeo, jerseyMat);
+  armL.position.set(-0.42, 1.35, 0);
+  armL.rotation.z = 0.22;
+  const armR = new THREE.Mesh(armGeo, jerseyMat);
+  armR.position.set(0.42, 1.35, 0);
+  armR.rotation.z = -0.22;
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), skinMat);
+  head.position.y = 1.86;
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+  hair.position.y = 1.89;
+
+  g.add(torso, shorts, legL, legR, armL, armR, head, hair);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return g;
 }
 
+function soccerBallTexture() {
+  const size = 512;
+  const c = document.createElement("canvas");
+  c.width = size; c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#f5f5f5";
+  ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = "#181818";
+  const drawPentagon = (cx, cy, r, rot) => {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = rot + (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const px = cx + Math.cos(a) * r;
+      const py = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+  const rows = [
+    { y: 0.12, r: 0.085, count: 3, x0: 0.22 },
+    { y: 0.5, r: 0.09, count: 4, x0: 0.06 },
+    { y: 0.88, r: 0.085, count: 3, x0: 0.22 },
+  ];
+  rows.forEach((row) => {
+    for (let i = 0; i < row.count; i++) {
+      drawPentagon((row.x0 + i * 0.32) * size, row.y * size, row.r * size, i * 0.7);
+    }
+  });
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
 const ball = new THREE.Mesh(
-  new THREE.SphereGeometry(BALL_RADIUS, 16, 16),
-  new THREE.MeshStandardMaterial({ color: 0xffffff })
+  new THREE.SphereGeometry(BALL_RADIUS, 24, 24),
+  new THREE.MeshStandardMaterial({ map: soccerBallTexture(), roughness: 0.5 })
 );
+ball.castShadow = true;
+ball.receiveShadow = true;
 scene.add(ball);
 const ballState = { pos: new THREE.Vector3(0, BALL_RADIUS, 0), vel: new THREE.Vector3(0, 0, 0) };
 
+const HOME_KIT = { jersey: 0x1d4fd8, shorts: 0xffffff, socks: 0x1d4fd8, hair: 0x2b1a10 };
+const AWAY_KIT = { jersey: 0xd8262c, shorts: 0x161616, socks: 0xd8262c, hair: 0x1a1a1a };
+
 const player = {
-  mesh: makePlayerMesh(0x2266ff),
+  mesh: makePlayerMesh(HOME_KIT),
   pos: new THREE.Vector3(-15, 0, 0),
   facing: Math.PI / 2,
   speed: 0,
@@ -173,11 +352,10 @@ const player = {
 };
 scene.add(player.mesh);
 
-const OPP_COLOR = 0xdd3333;
 const opponents = [
-  { mesh: makePlayerMesh(OPP_COLOR), pos: new THREE.Vector3(10, 0, -7), home: new THREE.Vector3(10, 0, -7), cooldown: 0 },
-  { mesh: makePlayerMesh(OPP_COLOR), pos: new THREE.Vector3(10, 0, 7), home: new THREE.Vector3(10, 0, 7), cooldown: 0 },
-  { mesh: makePlayerMesh(OPP_COLOR), pos: new THREE.Vector3(28, 0, 0), home: new THREE.Vector3(28, 0, 0), cooldown: 0 },
+  { mesh: makePlayerMesh(AWAY_KIT), pos: new THREE.Vector3(10, 0, -7), home: new THREE.Vector3(10, 0, -7), cooldown: 0 },
+  { mesh: makePlayerMesh(AWAY_KIT), pos: new THREE.Vector3(10, 0, 7), home: new THREE.Vector3(10, 0, 7), cooldown: 0 },
+  { mesh: makePlayerMesh(AWAY_KIT), pos: new THREE.Vector3(28, 0, 0), home: new THREE.Vector3(28, 0, 0), cooldown: 0 },
 ];
 opponents.forEach((o) => scene.add(o.mesh));
 

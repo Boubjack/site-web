@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Soccer 26</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>⚽ Ultimate Soccer <span>26</span></h1>
+      <p class="subtitle">Un mini jeu de foot 3D — arcade, rapide, sans licence</p>
+    </header>
+
+    <div id="game-container">
+      <div id="game"></div>
+
+      <div id="hud">
+        <div class="hud-box" id="score">0 - 0</div>
+        <div class="hud-box" id="timer">1:30</div>
+      </div>
+
+      <div id="overlay" class="visible">
+        <div class="panel">
+          <h2 id="overlay-title">Ultimate Soccer 26</h2>
+          <p id="overlay-text">
+            Terrain 3D, caméra à la 3e personne. Marque plus de buts que l'IA avant la fin du chrono !<br>
+            <strong>Flèches / ZQSD</strong> : déplacer<br>
+            <strong>Espace</strong> (tenir puis relâcher) : tirer, plus fort si tenu longtemps<br>
+            <strong>Maj</strong> : sprint
+          </p>
+          <button id="start-btn">Jouer</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Jeu généré pour le site — inspiré des jeux de foot arcade, aucun contenu officiel EA/FIFA.</p>
+    </footer>
+  </div>
+
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>

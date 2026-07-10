@@ -373,6 +373,12 @@ a { color: inherit; text-decoration: none; }
 
 .media-frame img.active { opacity: 1; }
 
+.media-frame img.contain {
+  object-fit: contain;
+  background: #f4f4f2;
+  padding: 1.2rem;
+}
+
 .media-nav {
   position: absolute;
   top: 50%;

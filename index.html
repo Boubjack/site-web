@@ -53,7 +53,7 @@
       </div>
       <div class="hero-visual">
         <div class="hero-block">
-          <img class="hero-logo" src="assets/logo.svg" alt="">
+          <img class="hero-photo" src="assets/products/photo-hero-snake.jpg" alt="Veste VIPER blanche — dos avec grand serpent">
           <span class="hero-tag">DROP<br>001</span>
         </div>
         <img class="hero-snake" src="assets/snake.svg" alt="" aria-hidden="true">
@@ -78,9 +78,8 @@
       <article class="product">
         <div class="product-media">
           <a class="media-frame" href="#">
-            <img class="active" src="assets/products/jacket-black.svg" alt="Viper Shell Jacket noire — vue face" loading="lazy">
-            <img src="assets/products/jacket-black-back.svg" alt="Viper Shell Jacket noire — vue dos avec serpent" loading="lazy">
-            <img src="assets/products/jacket-black-model.svg" alt="Viper Shell Jacket noire — portée" loading="lazy">
+            <img class="active" src="assets/products/photo-black-1.jpg" alt="Viper Shell Jacket noire — vue principale" loading="lazy">
+            <img src="assets/products/photo-black-2.jpg" alt="Viper Shell Jacket noire — deuxième vue" loading="lazy">
           </a>
           <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
           <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
@@ -98,9 +97,8 @@
       <article class="product">
         <div class="product-media">
           <a class="media-frame" href="#">
-            <img class="active" src="assets/products/jacket-sky.svg" alt="Sk's Viper Jacket bleu ciel — vue face" loading="lazy">
-            <img src="assets/products/jacket-sky-back.svg" alt="Sk's Viper Jacket bleu ciel — vue dos avec serpent" loading="lazy">
-            <img src="assets/products/jacket-sky-model.svg" alt="Sk's Viper Jacket bleu ciel — portée" loading="lazy">
+            <img class="active" src="assets/products/photo-sky-1.jpg" alt="Sk's Viper Jacket bleu ciel — vue principale avec manche Sk's Viper" loading="lazy">
+            <img src="assets/products/photo-sky-2.jpg" alt="Sk's Viper Jacket bleu ciel — deuxième vue" loading="lazy">
           </a>
           <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
           <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
@@ -117,9 +115,8 @@
       <article class="product">
         <div class="product-media">
           <a class="media-frame" href="#">
-            <img class="active" src="assets/products/jacket-army.svg" alt="Viper Shell Jacket vert armée — vue face" loading="lazy">
-            <img src="assets/products/jacket-army-back.svg" alt="Viper Shell Jacket vert armée — vue dos avec serpent" loading="lazy">
-            <img src="assets/products/jacket-army-model.svg" alt="Viper Shell Jacket vert armée — portée" loading="lazy">
+            <img class="active" src="assets/products/photo-army-1.jpg" alt="Viper Shell Jacket vert armée — vue principale" loading="lazy">
+            <img src="assets/products/photo-army-2.jpg" alt="Viper Shell Jacket vert armée — deuxième vue" loading="lazy">
           </a>
           <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
           <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
@@ -136,8 +133,8 @@
       <article class="product">
         <div class="product-media">
           <a class="media-frame" href="#">
-            <img class="active" src="assets/products/beanie-sand.svg" alt="Venom Beanie sable — vue face" loading="lazy">
-            <img src="assets/products/beanie-sand-model.svg" alt="Venom Beanie sable — porté" loading="lazy">
+            <img class="active" src="assets/products/photo-beanie-1.jpg" alt="Venom Beanie noir avec serpent blanc" loading="lazy">
+            <img src="assets/products/photo-beanie-2.jpg" alt="Venom Beanie sable avec serpent noir" loading="lazy">
           </a>
           <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
           <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
@@ -147,7 +144,7 @@
         </div>
         <div class="product-info">
           <h3>VENOM BEANIE</h3>
-          <p class="variant">SAND / SNAKE MARK</p>
+          <p class="variant">BLACK / SAND</p>
           <p class="price">€35</p>
         </div>
       </article>
@@ -191,14 +188,17 @@
   </footer>
 
 <script>
-  // Galerie produit : survol = 2e visuel, flèches = défilement des angles
+  // Galerie produit : au survol, toutes les images défilent automatiquement ;
+  // les flèches permettent aussi de naviguer manuellement.
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   document.querySelectorAll('.product-media').forEach(function (media) {
     var imgs = Array.prototype.slice.call(media.querySelectorAll('.media-frame img'));
     if (imgs.length < 2) return;
 
     var dotsBox = media.querySelector('.media-dots');
     var index = 0;
-    var touched = false;
+    var timer = null;
 
     imgs.forEach(function (_, k) {
       var dot = document.createElement('span');
@@ -213,14 +213,24 @@
       dots.forEach(function (dot, k) { dot.classList.toggle('on', k === index); });
     }
 
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    function start() {
+      stop();
+      if (reducedMotion) return;
+      timer = setInterval(function () { show(index + 1); }, 850);
+    }
+
     media.querySelector('.prev').addEventListener('click', function (e) {
-      e.preventDefault(); touched = true; show(index - 1);
+      e.preventDefault(); show(index - 1); if (timer) start();
     });
     media.querySelector('.next').addEventListener('click', function (e) {
-      e.preventDefault(); touched = true; show(index + 1);
+      e.preventDefault(); show(index + 1); if (timer) start();
     });
-    media.addEventListener('mouseenter', function () { if (!touched) show(1); });
-    media.addEventListener('mouseleave', function () { if (!touched) show(0); });
+    media.addEventListener('mouseenter', function () { show(index + 1); start(); });
+    media.addEventListener('mouseleave', function () { stop(); show(0); });
   });
 </script>
 </body>

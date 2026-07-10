@@ -12,15 +12,29 @@ Ouvrir `index.html` dans un navigateur, aucun build nécessaire.
 - `assets/snake.svg` — motif serpent
 - `assets/products/` — visuels produits (illustrations SVG)
 
+## Galerie produit multi-angles
+
+Chaque carte produit affiche plusieurs visuels (face, dos, porté) :
+
+- **survol** de la carte → passe automatiquement au 2ᵉ visuel
+- **flèches ← →** (visibles au survol) → fait défiler tous les angles
+- **points** sous l'image → indiquent l'angle affiché
+
 ## Remplacer par les vraies photos produits
 
-Les visuels produits sont des illustrations SVG recréées d'après les photos.
-Pour utiliser les vraies photos, dépose-les dans `assets/products/` et remplace
-les chemins dans `index.html` :
+Les visuels sont des illustrations SVG recréées d'après les photos de la
+marque. Pour utiliser les vraies photos, dépose-les dans `assets/products/`
+et remplace les chemins `src` des balises `<img>` dans `index.html`
+(un `<img>` par angle, dans chaque `.media-frame`) :
 
-- `jacket-black.svg` → photo de la Viper Jacket noire
-- `jacket-sky.svg` → photo de la Sk's Viper Jacket bleu ciel
-- `jacket-army.svg` → photo de la Viper Jacket vert armée
-- `beanie-sand.svg` → photo du bonnet (Venom Beanie)
+| Fichier actuel | Photo à mettre |
+| --- | --- |
+| `jacket-black.svg` / `-back.svg` / `-model.svg` | Viper Jacket noire : face / dos / portée |
+| `jacket-sky.svg` / `-back.svg` / `-model.svg` | Sk's Viper Jacket bleu ciel : face / dos / portée |
+| `jacket-army.svg` / `-back.svg` / `-model.svg` | Viper Jacket vert armée : face / dos / portée |
+| `beanie-sand.svg` / `-model.svg` | Venom Beanie : face / porté |
 
-Idem pour `assets/logo.svg` si tu préfères le logo original en PNG.
+Tu peux ajouter autant d'angles que tu veux : il suffit d'ajouter des
+`<img>` dans le `.media-frame` du produit, les points et les flèches
+s'adaptent automatiquement. Idem pour `assets/logo.svg` si tu préfères
+le logo original en PNG.

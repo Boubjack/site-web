@@ -76,11 +76,18 @@
 
     <div class="product-grid">
       <article class="product">
-        <a class="product-media" href="#">
-          <img src="assets/products/jacket-black.svg" alt="Viper Shell Jacket — Black" loading="lazy">
+        <div class="product-media">
+          <a class="media-frame" href="#">
+            <img class="active" src="assets/products/jacket-black.svg" alt="Viper Shell Jacket noire — vue face" loading="lazy">
+            <img src="assets/products/jacket-black-back.svg" alt="Viper Shell Jacket noire — vue dos avec serpent" loading="lazy">
+            <img src="assets/products/jacket-black-model.svg" alt="Viper Shell Jacket noire — portée" loading="lazy">
+          </a>
+          <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
+          <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
+          <div class="media-dots" aria-hidden="true"></div>
           <span class="product-badge">01</span>
           <span class="product-flag">HOT</span>
-        </a>
+        </div>
         <div class="product-info">
           <h3>VIPER SHELL JACKET</h3>
           <p class="variant">BLACK</p>
@@ -89,10 +96,17 @@
       </article>
 
       <article class="product">
-        <a class="product-media" href="#">
-          <img src="assets/products/jacket-sky.svg" alt="Sk's Viper Jacket — Sky Blue" loading="lazy">
+        <div class="product-media">
+          <a class="media-frame" href="#">
+            <img class="active" src="assets/products/jacket-sky.svg" alt="Sk's Viper Jacket bleu ciel — vue face" loading="lazy">
+            <img src="assets/products/jacket-sky-back.svg" alt="Sk's Viper Jacket bleu ciel — vue dos avec serpent" loading="lazy">
+            <img src="assets/products/jacket-sky-model.svg" alt="Sk's Viper Jacket bleu ciel — portée" loading="lazy">
+          </a>
+          <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
+          <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
+          <div class="media-dots" aria-hidden="true"></div>
           <span class="product-badge">02</span>
-        </a>
+        </div>
         <div class="product-info">
           <h3>SK'S VIPER JACKET</h3>
           <p class="variant">SKY BLUE</p>
@@ -101,10 +115,17 @@
       </article>
 
       <article class="product">
-        <a class="product-media" href="#">
-          <img src="assets/products/jacket-army.svg" alt="Viper Shell Jacket — Army Green" loading="lazy">
+        <div class="product-media">
+          <a class="media-frame" href="#">
+            <img class="active" src="assets/products/jacket-army.svg" alt="Viper Shell Jacket vert armée — vue face" loading="lazy">
+            <img src="assets/products/jacket-army-back.svg" alt="Viper Shell Jacket vert armée — vue dos avec serpent" loading="lazy">
+            <img src="assets/products/jacket-army-model.svg" alt="Viper Shell Jacket vert armée — portée" loading="lazy">
+          </a>
+          <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
+          <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
+          <div class="media-dots" aria-hidden="true"></div>
           <span class="product-badge">03</span>
-        </a>
+        </div>
         <div class="product-info">
           <h3>VIPER SHELL JACKET</h3>
           <p class="variant">ARMY GREEN</p>
@@ -113,11 +134,17 @@
       </article>
 
       <article class="product">
-        <a class="product-media" href="#">
-          <img src="assets/products/beanie-sand.svg" alt="Venom Beanie — Sand" loading="lazy">
+        <div class="product-media">
+          <a class="media-frame" href="#">
+            <img class="active" src="assets/products/beanie-sand.svg" alt="Venom Beanie sable — vue face" loading="lazy">
+            <img src="assets/products/beanie-sand-model.svg" alt="Venom Beanie sable — porté" loading="lazy">
+          </a>
+          <button class="media-nav prev" type="button" aria-label="Image précédente">←</button>
+          <button class="media-nav next" type="button" aria-label="Image suivante">→</button>
+          <div class="media-dots" aria-hidden="true"></div>
           <span class="product-badge">04</span>
           <span class="product-flag flag-green">NEW</span>
-        </a>
+        </div>
         <div class="product-info">
           <h3>VENOM BEANIE</h3>
           <p class="variant">SAND / SNAKE MARK</p>
@@ -163,5 +190,38 @@
     </div>
   </footer>
 
+<script>
+  // Galerie produit : survol = 2e visuel, flèches = défilement des angles
+  document.querySelectorAll('.product-media').forEach(function (media) {
+    var imgs = Array.prototype.slice.call(media.querySelectorAll('.media-frame img'));
+    if (imgs.length < 2) return;
+
+    var dotsBox = media.querySelector('.media-dots');
+    var index = 0;
+    var touched = false;
+
+    imgs.forEach(function (_, k) {
+      var dot = document.createElement('span');
+      if (k === 0) dot.className = 'on';
+      dotsBox.appendChild(dot);
+    });
+    var dots = Array.prototype.slice.call(dotsBox.children);
+
+    function show(n) {
+      index = (n + imgs.length) % imgs.length;
+      imgs.forEach(function (img, k) { img.classList.toggle('active', k === index); });
+      dots.forEach(function (dot, k) { dot.classList.toggle('on', k === index); });
+    }
+
+    media.querySelector('.prev').addEventListener('click', function (e) {
+      e.preventDefault(); touched = true; show(index - 1);
+    });
+    media.querySelector('.next').addEventListener('click', function (e) {
+      e.preventDefault(); touched = true; show(index + 1);
+    });
+    media.addEventListener('mouseenter', function () { if (!touched) show(1); });
+    media.addEventListener('mouseleave', function () { if (!touched) show(0); });
+  });
+</script>
 </body>
 </html>

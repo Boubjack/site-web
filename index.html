@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal IA — démo inspirée de Claude Code</title>
+<style>
+  :root {
+    --bg: #1a1915;
+    --panel: #211f1a;
+    --border: #3a372e;
+    --text: #e8e6df;
+    --dim: #8a877c;
+    --accent: #d97757;
+    --green: #7fb069;
+    --yellow: #e3b341;
+    --blue: #6ca0dc;
+    --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  .disclaimer {
+    color: var(--dim);
+    font-size: 0.75rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  .terminal {
+    width: 100%;
+    max-width: 860px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    display: flex;
+    flex-direction: column;
+    height: 75vh;
+    min-height: 420px;
+  }
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .6rem .9rem;
+    background: #262420;
+    border-bottom: 1px solid var(--border);
+    font-size: .8rem;
+    color: var(--dim);
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.j { background: #febc2e; } .dot.v { background: #28c840; }
+  .titlebar .title { flex: 1; text-align: center; }
+  #screen {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    font-size: .85rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .inputline {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .7rem 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .inputline .chevron { color: var(--accent); font-weight: bold; }
+  #cmd {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: .85rem;
+    caret-color: var(--accent);
+  }
+  .banner { color: var(--accent); }
+  .ok { color: var(--green); }
+  .warn { color: var(--yellow); }
+  .info { color: var(--blue); }
+  .dim { color: var(--dim); }
+  .user-echo { color: var(--text); }
+  .user-echo::before { content: "> "; color: var(--accent); font-weight: bold; }
+  .thinking { color: var(--dim); font-style: italic; }
+  #screen::-webkit-scrollbar { width: 8px; }
+  #screen::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+  <p class="disclaimer">Démo non officielle — simulation d'un terminal IA dans le navigateur, inspirée de Claude Code. Aucun lien avec Anthropic.</p>
+  <div class="terminal" onclick="document.getElementById('cmd').focus()">
+    <div class="titlebar">
+      <span class="dot r"></span><span class="dot j"></span><span class="dot v"></span>
+      <span class="title">terminal-ia — ~/site-web</span>
+    </div>
+    <div id="screen"></div>
+    <div class="inputline">
+      <span class="chevron">&gt;</span>
+      <input id="cmd" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Tapez une commande… (/help pour la liste)" autofocus>
+    </div>
+  </div>
+
+<script>
+const screen = document.getElementById('screen');
+const input = document.getElementById('cmd');
+const history = [];
+let histIdx = -1;
+
+const files = {
+  'index.html': 'La page que vous êtes en train de regarder.',
+  'README.md': '# site-web\na simple website',
+};
+
+function line(html, cls) {
+  const div = document.createElement('div');
+  if (cls) div.className = cls;
+  div.innerHTML = html;
+  screen.appendChild(div);
+  screen.scrollTop = screen.scrollHeight;
+  return div;
+}
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function typeOut(text, cls) {
+  const div = line('', cls);
+  for (const ch of text) {
+    div.textContent += ch;
+    screen.scrollTop = screen.scrollHeight;
+    await new Promise(r => setTimeout(r, 8));
+  }
+}
+
+const banner = String.raw`
+ ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗          ██╗ █████╗
+ ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║          ██║██╔══██╗
+    ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║          ██║███████║
+    ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║          ██║██╔══██║
+    ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗     ██║██║  ██║
+    ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝     ╚═╝╚═╝  ╚═╝`;
+
+const commands = {
+  '/help': () => {
+    line(`<span class="info">Commandes disponibles :</span>
+  /help          affiche cette aide
+  /clear         efface l'écran
+  /about         à propos de cette démo
+  ls             liste les fichiers du projet
+  cat &lt;fichier&gt;  affiche un fichier
+  echo &lt;texte&gt;   répète le texte
+  date           affiche la date`);
+  },
+  '/clear': () => { screen.innerHTML = ''; },
+  '/about': () => {
+    line(`<span class="ok">Terminal IA</span> — une démo front-end (HTML/CSS/JS pur, zéro dépendance).
+Elle imite l'apparence d'un assistant de code en ligne de commande.
+<span class="dim">Les réponses sont simulées localement : rien n'est envoyé à un serveur.</span>`);
+  },
+  'ls': () => {
+    line(Object.keys(files).map(f => `<span class="info">${f}</span>`).join('  '));
+  },
+  'date': () => {
+    line(new Date().toLocaleString('fr-FR'));
+  },
+};
+
+const cannedReplies = [
+  "Bonne question ! Dans une vraie installation de Claude Code, je lirais vos fichiers, exécuterais des tests et proposerais un correctif. Ici, je ne suis qu'une simulation locale. 😊",
+  "Je suis la version « décorative » d'un assistant de code : tout se passe dans votre navigateur, sans IA réelle derrière.",
+  "Pour utiliser le vrai Claude Code : npm install -g @anthropic-ai/claude-code, puis lancez « claude » dans votre terminal.",
+  "Astuce : tapez /help pour voir ce que cette démo sait faire.",
+];
+let replyIdx = 0;
+
+async function handle(raw) {
+  const cmd = raw.trim();
+  if (!cmd) return;
+  line(esc(cmd), 'user-echo');
+  history.push(cmd);
+  histIdx = history.length;
+
+  const [name, ...rest] = cmd.split(/\s+/);
+  const arg = rest.join(' ');
+
+  if (commands[name]) { commands[name](); return; }
+  if (name === 'cat') {
+    if (files[arg]) line(esc(files[arg]));
+    else line(`cat: ${esc(arg || '?')} : fichier introuvable`, 'warn');
+    return;
+  }
+  if (name === 'echo') { line(esc(arg)); return; }
+
+  const t = line('réflexion…', 'thinking');
+  await new Promise(r => setTimeout(r, 600));
+  t.remove();
+  await typeOut(cannedReplies[replyIdx++ % cannedReplies.length], 'ok');
+}
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const v = input.value;
+    input.value = '';
+    handle(v);
+  } else if (e.key === 'ArrowUp') {
+    if (histIdx > 0) { histIdx--; input.value = history[histIdx]; }
+    e.preventDefault();
+  } else if (e.key === 'ArrowDown') {
+    if (histIdx < history.length - 1) { histIdx++; input.value = history[histIdx]; }
+    else { histIdx = history.length; input.value = ''; }
+    e.preventDefault();
+  }
+});
+
+line(`<span class="banner">${banner}</span>`);
+line(`\n<span class="dim">Bienvenue dans</span> <span class="ok">Terminal IA</span> <span class="dim">— démo v1.0 (simulation, non officielle)</span>`);
+line(`<span class="dim">Tapez</span> <span class="info">/help</span> <span class="dim">pour commencer.</span>\n`);
+</script>
+</body>
+</html>

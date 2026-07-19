@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHANEL N°5 Cinematic AI Ad — The Free Guide by Doc Mo</title>
+<meta name="description" content="The honest, frame-by-frame guide to building a luxury perfume commercial entirely with AI — 5 keyframes, 4 morphing clips, full sound design. Every real prompt included.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0705;
+    --ink: #14100b;
+    --panel: #1c1510;
+    --panel-2: #241a12;
+    --line: rgba(212, 175, 120, 0.18);
+    --gold: #d4af78;
+    --gold-bright: #f0d9a8;
+    --amber: #b8763a;
+    --sienna: #8a4a22;
+    --text: #e9ddc9;
+    --muted: #a89478;
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --sans: "Inter", -apple-system, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--amber); color: var(--black); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 7, 5, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    max-width: 1080px; margin: 0 auto; padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand {
+    font-family: var(--sans); font-weight: 600; letter-spacing: 0.35em;
+    font-size: 0.8rem; color: var(--gold-bright); text-decoration: none;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  .nav-links { display: flex; gap: 24px; flex-wrap: wrap; justify-content: flex-end; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 0.72rem;
+    letter-spacing: 0.18em; text-transform: uppercase; transition: color 0.25s;
+  }
+  .nav-links a:hover { color: var(--gold-bright); }
+  @media (max-width: 720px) { .nav-links { display: none; } }
+
+  /* ---------- Hero ---------- */
+  header.hero {
+    position: relative; overflow: hidden;
+    padding: 96px 0 72px;
+    background:
+      radial-gradient(ellipse 90% 60% at 20% -10%, rgba(240, 200, 130, 0.22), transparent 60%),
+      radial-gradient(ellipse 70% 55% at 85% 110%, rgba(138, 74, 34, 0.35), transparent 65%),
+      linear-gradient(180deg, #120c07 0%, var(--black) 100%);
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 56px; align-items: center;
+  }
+  @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
+  .kicker {
+    font-size: 0.72rem; letter-spacing: 0.4em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 24px;
+  }
+  .kicker::after {
+    content: ""; display: inline-block; width: 48px; height: 1px;
+    background: var(--gold); margin-left: 16px; vertical-align: middle; opacity: 0.5;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: clamp(2.6rem, 6vw, 4.4rem); line-height: 1.05;
+    color: var(--gold-bright); margin-bottom: 8px;
+  }
+  h1 .no5 { font-style: italic; color: var(--text); }
+  .hero-sub {
+    font-family: var(--serif); font-style: italic; font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+    color: var(--muted); margin-bottom: 24px;
+  }
+  .hero-lede { max-width: 52ch; color: var(--text); margin-bottom: 36px; font-size: 0.98rem; }
+  .hero-lede strong { font-weight: 500; color: var(--gold-bright); }
+  .hero-cta { display: flex; gap: 16px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; text-decoration: none; font-size: 0.75rem;
+    letter-spacing: 0.22em; text-transform: uppercase; font-weight: 500;
+    padding: 15px 30px; transition: all 0.25s; border: 1px solid var(--gold);
+  }
+  .btn-gold { background: linear-gradient(135deg, var(--gold-bright), var(--gold)); color: var(--black); border-color: transparent; }
+  .btn-gold:hover { filter: brightness(1.08); }
+  .btn-ghost { color: var(--gold-bright); }
+  .btn-ghost:hover { background: rgba(212, 175, 120, 0.1); }
+  .hero-img {
+    border: 1px solid var(--line); overflow: hidden;
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,0.8), 0 0 120px -40px rgba(212, 175, 120, 0.35);
+  }
+  .hero-img img { display: block; width: 100%; height: auto; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--line); border: 1px solid var(--line); margin-top: 64px;
+  }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--ink); padding: 28px 16px; text-align: center; }
+  .stat b {
+    display: block; font-family: var(--serif); font-weight: 500;
+    font-size: 2.4rem; color: var(--gold-bright); line-height: 1;
+  }
+  .stat span {
+    font-size: 0.66rem; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--muted); margin-top: 8px; display: block;
+  }
+
+  /* ---------- Sections ---------- */
+  section { padding: 88px 0; border-top: 1px solid var(--line); }
+  .ch-label {
+    font-size: 0.7rem; letter-spacing: 0.4em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 14px;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: clamp(1.9rem, 4vw, 2.8rem); line-height: 1.15;
+    color: var(--gold-bright); margin-bottom: 20px;
+  }
+  .section-lede { max-width: 62ch; color: var(--muted); margin-bottom: 44px; }
+  .section-lede strong { color: var(--text); font-weight: 500; }
+
+  blockquote {
+    border-left: 2px solid var(--gold); padding: 8px 0 8px 28px; margin: 44px 0 0;
+  }
+  blockquote p {
+    font-family: var(--serif); font-style: italic; font-size: 1.35rem;
+    color: var(--text); line-height: 1.45;
+  }
+  blockquote cite {
+    display: block; font-family: var(--sans); font-style: normal; font-size: 0.68rem;
+    letter-spacing: 0.3em; text-transform: uppercase; color: var(--amber); margin-top: 14px;
+  }
+
+  /* ---------- Build arc / keyframes ---------- */
+  .arc {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 44px;
+  }
+  @media (max-width: 860px) { .arc { grid-template-columns: repeat(2, 1fr); } .arc .frame:last-child { grid-column: span 2; } }
+  .frame { position: relative; border: 1px solid var(--line); overflow: hidden; background: var(--ink); }
+  .frame img { display: block; width: 100%; aspect-ratio: 9 / 14; object-fit: cover; transition: transform 0.6s ease; }
+  .frame:hover img { transform: scale(1.045); }
+  .frame figcaption {
+    position: absolute; inset: auto 0 0 0;
+    background: linear-gradient(0deg, rgba(10,7,5,0.92) 30%, transparent);
+    padding: 34px 12px 12px;
+  }
+  .frame .n { font-family: var(--serif); font-style: italic; color: var(--gold); font-size: 0.85rem; }
+  .frame .t {
+    display: block; font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text); margin-top: 2px;
+  }
+
+  /* ---------- Tool cards ---------- */
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: linear-gradient(160deg, var(--panel), var(--ink));
+    border: 1px solid var(--line); padding: 30px 28px;
+  }
+  .card h3 {
+    font-family: var(--serif); font-weight: 500; font-size: 1.4rem;
+    color: var(--gold-bright); margin-bottom: 4px;
+  }
+  .card .role {
+    font-size: 0.66rem; letter-spacing: 0.26em; text-transform: uppercase;
+    color: var(--amber); margin-bottom: 14px;
+  }
+  .card p { font-size: 0.9rem; color: var(--muted); }
+  .card p em { color: var(--text); font-style: normal; font-weight: 400; }
+
+  /* ---------- Workflow steps ---------- */
+  .steps { counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 88px 1fr; gap: 28px;
+    padding: 32px 0; border-bottom: 1px solid var(--line); counter-increment: step;
+  }
+  .step:last-child { border-bottom: none; }
+  @media (max-width: 560px) { .step { grid-template-columns: 56px 1fr; gap: 18px; } }
+  .step::before {
+    content: "0" counter(step);
+    font-family: var(--serif); font-style: italic; font-size: 2.6rem;
+    color: var(--sienna); line-height: 1;
+  }
+  .step h3 { font-family: var(--sans); font-weight: 500; font-size: 1.05rem; color: var(--gold-bright); margin-bottom: 8px; }
+  .step p { font-size: 0.92rem; color: var(--muted); max-width: 64ch; }
+  .step p em { color: var(--text); font-style: normal; }
+
+  /* ---------- Prompt blocks ---------- */
+  .prompt { border: 1px solid var(--line); background: var(--ink); margin-bottom: 22px; }
+  .prompt-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(90deg, rgba(212,175,120,0.07), transparent);
+  }
+  .prompt-head span {
+    font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--gold); font-weight: 500;
+  }
+  .copy-btn {
+    font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted); background: none;
+    border: 1px solid var(--line); padding: 7px 14px; cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover { color: var(--gold-bright); border-color: var(--gold); }
+  .copy-btn.done { color: var(--black); background: var(--gold); border-color: var(--gold); }
+  .prompt pre {
+    padding: 20px; overflow-x: auto;
+    font-family: var(--mono); font-size: 0.78rem; line-height: 1.65;
+    color: var(--text); white-space: pre-wrap; word-break: break-word;
+  }
+
+  .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 48px; }
+  @media (max-width: 720px) { .why { grid-template-columns: 1fr; } }
+  .why .card h4 {
+    font-family: var(--serif); font-weight: 500; font-size: 1.2rem;
+    color: var(--gold-bright); margin-bottom: 10px;
+  }
+  .why .card p { font-size: 0.85rem; }
+
+  .rule-note {
+    margin-top: 34px; padding: 22px 26px; border: 1px solid var(--line);
+    background: rgba(212, 175, 120, 0.05); font-size: 0.9rem; color: var(--muted);
+  }
+  .rule-note code {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--gold-bright);
+    background: rgba(212,175,120,0.1); padding: 2px 6px;
+  }
+
+  /* ---------- Sound timeline ---------- */
+  .timeline { border-left: 1px solid var(--line); margin-left: 8px; }
+  .beat { position: relative; padding: 0 0 34px 40px; }
+  .beat:last-child { padding-bottom: 0; }
+  .beat::before {
+    content: ""; position: absolute; left: -5px; top: 8px;
+    width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg);
+  }
+  .beat time {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--amber);
+    letter-spacing: 0.1em; display: block; margin-bottom: 4px;
+  }
+  .beat h3 { font-family: var(--sans); font-weight: 500; font-size: 1rem; color: var(--gold-bright); margin-bottom: 4px; }
+  .beat p { font-size: 0.88rem; color: var(--muted); max-width: 58ch; }
+
+  /* ---------- Pitfalls ---------- */
+  .pitfalls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  @media (max-width: 720px) { .pitfalls { grid-template-columns: 1fr; } }
+  .pitfall { border: 1px solid var(--line); background: var(--ink); padding: 26px 26px 24px; }
+  .pitfall .num {
+    font-family: var(--serif); font-style: italic; font-size: 1.1rem; color: var(--sienna);
+    display: block; margin-bottom: 8px;
+  }
+  .pitfall h3 { font-family: var(--sans); font-weight: 500; font-size: 0.98rem; color: var(--gold-bright); margin-bottom: 6px; }
+  .pitfall p { font-size: 0.85rem; color: var(--muted); }
+
+  /* ---------- CTA ---------- */
+  .cta {
+    background:
+      radial-gradient(ellipse 80% 70% at 50% 120%, rgba(184, 118, 58, 0.3), transparent 65%),
+      linear-gradient(180deg, var(--black), #140d07);
+  }
+  .cta-grid { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 56px; align-items: center; }
+  @media (max-width: 860px) { .cta-grid { grid-template-columns: 1fr; } }
+  .offer { list-style: none; margin: 32px 0 40px; }
+  .offer li {
+    padding: 18px 0 18px 36px; border-bottom: 1px solid var(--line);
+    position: relative; font-size: 0.95rem; color: var(--muted);
+  }
+  .offer li strong { display: block; color: var(--gold-bright); font-weight: 500; margin-bottom: 2px; }
+  .offer li::before {
+    content: "→"; position: absolute; left: 0; top: 18px;
+    color: var(--gold); font-family: var(--serif);
+  }
+  .socials { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 28px; }
+  .socials a { color: var(--muted); text-decoration: none; font-size: 0.8rem; letter-spacing: 0.08em; transition: color 0.25s; }
+  .socials a b { color: var(--gold-bright); font-weight: 500; display: block; font-size: 0.68rem; letter-spacing: 0.26em; text-transform: uppercase; margin-bottom: 2px; }
+  .socials a:hover { color: var(--gold-bright); }
+
+  /* ---------- Footer ---------- */
+  footer { border-top: 1px solid var(--line); padding: 44px 0 56px; }
+  footer .wrap { display: flex; flex-direction: column; gap: 14px; }
+  footer p { font-size: 0.74rem; color: var(--muted); max-width: 78ch; }
+  footer .fine { opacity: 0.75; }
+
+  /* ---------- Reveal ---------- */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="brand" href="#top">Doc&nbsp;Mo</a>
+    <div class="nav-links">
+      <a href="#build">The Build</a>
+      <a href="#tools">Tools</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#prompts">Prompts</a>
+      <a href="#motion">Motion</a>
+      <a href="#sound">Sound</a>
+      <a href="#pitfalls">Pitfalls</a>
+      <a href="#work">Work with me</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <p class="kicker">Doc Mo · Free Guide · 2026</p>
+        <h1>CHANEL <span class="no5">N°5</span><br>Cinematic AI Ad</h1>
+        <p class="hero-sub">How I built a luxury perfume commercial with AI — no studio, no camera, no real bottle.</p>
+        <p class="hero-lede">The honest, frame-by-frame look at how a 12-second luxury perfume ad gets built entirely with AI: <strong>5 generated keyframes, 4 morphing video clips, a full sound design</strong>, and the social-ready reel layout. Every real prompt included.</p>
+        <div class="hero-cta">
+          <a class="btn btn-gold" href="#prompts">Get the prompts</a>
+          <a class="btn btn-ghost" href="#work">Work with Doc Mo</a>
+        </div>
+      </div>
+      <figure class="hero-img">
+        <img src="assets/kf5-hero.jpg" alt="AI-generated hero shot of a sealed golden perfume flacon under a warm key light" width="551" height="980">
+      </figure>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>5</b><span>Keyframes</span></div>
+      <div class="stat"><b>4</b><span>Clips</span></div>
+      <div class="stat"><b>12s</b><span>Runtime</span></div>
+      <div class="stat"><b>100%</b><span>AI</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="build">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 01</p>
+    <h2 class="reveal">What I Actually Built</h2>
+    <p class="section-lede reveal">A 12-second commercial where a ribbon of golden perfume swirls in the dark, gathers into the iconic glass flacon, fills with gold, takes a single falling drop, seals with its faceted stopper, and resolves on the hero shot. <strong>No studio. No camera. No real bottle. 100% AI.</strong></p>
+
+    <div class="arc reveal">
+      <figure class="frame">
+        <img src="assets/kf1-liquid-genesis.jpg" alt="Keyframe 1 — a ribbon of golden perfume coiling in a dark void" loading="lazy">
+        <figcaption><span class="n">01 · Liquid Genesis</span><span class="t">Gold Swirl</span></figcaption>
+      </figure>
+      <figure class="frame">
+        <img src="assets/kf2-flacon-forms.jpg" alt="Keyframe 2 — a translucent glass flacon materializing in mid-air" loading="lazy">
+        <figcaption><span class="n">02 · Flacon Forms</span><span class="t">Glass Takes Shape</span></figcaption>
+      </figure>
+      <figure class="frame">
+        <img src="assets/kf3-fills-drop.jpg" alt="Keyframe 3 — the flacon filled with golden perfume, a droplet falling toward the neck" loading="lazy">
+        <figcaption><span class="n">03 · Fills + Drop</span><span class="t">N°5</span></figcaption>
+      </figure>
+      <figure class="frame">
+        <img src="assets/kf4-stopper-seals.jpg" alt="Keyframe 4 — the faceted glass stopper descending over the bottle neck" loading="lazy">
+        <figcaption><span class="n">04 · Stopper Seals</span><span class="t">Faceted Glass</span></figcaption>
+      </figure>
+      <figure class="frame">
+        <img src="assets/kf5-hero.jpg" alt="Keyframe 5 — hero beauty shot of the sealed flacon" loading="lazy">
+        <figcaption><span class="n">05 · Hero</span><span class="t">Chanel N°5</span></figcaption>
+      </figure>
+    </div>
+
+    <p class="section-lede reveal">This is a <strong>spec / concept ad</strong> — a showcase of what a luxury product film looks like in 2026 when it's made entirely with AI. The whole story is told with the product alone: an infinite warm studio void, one golden key light, and a single transformation from liquid to sealed flacon. No humans, no hands, no props — pure product storytelling. The video doesn't generate the whole thing at once — it <strong>morphs between these fixed frames</strong>. That's the secret to keeping it stable, on-brand, and repeatable for any product.</p>
+
+    <blockquote class="reveal">
+      <p>"The whole ad is one idea: liquid becomes legend. Five frames, four moves, twelve seconds."</p>
+      <cite>— Doc Mo</cite>
+    </blockquote>
+  </div>
+</section>
+
+<section id="tools">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 02</p>
+    <h2 class="reveal">The Tools: The Full AI Stack</h2>
+    <p class="section-lede reveal">No camera, no studio, no retoucher. The entire ad is made by directing a handful of AI tools — and stitching the result together.</p>
+    <div class="cards reveal">
+      <div class="card">
+        <h3>Nano Banana Pro</h3>
+        <p class="role">The Keyframes</p>
+        <p>Google's Gemini 3 Pro Image model. It generates the 5 keyframes at <em>2K, 9:16</em> — photoreal glass and liquid with correct refraction and clean label typography. It's a reasoning image model, so it follows a structured, blueprint-style prompt instead of a loose description.</p>
+      </div>
+      <div class="card">
+        <h3>Kling 3.0</h3>
+        <p class="role">The Motion</p>
+        <p>Each transition between two keyframes is animated in <em>pro mode, 3 seconds, 1080p</em>, using a start frame + end frame. Giving it both frames forces a controlled A → B morph instead of a random hallucination.</p>
+      </div>
+      <div class="card">
+        <h3>ElevenLabs</h3>
+        <p class="role">The Sound</p>
+        <p>Every sound effect — the shimmer, the droplet, the glass cling on the seal — plus the soft ambient music bed is generated with ElevenLabs and placed <em>frame-accurate on the beats</em>. Sound is what makes the morph feel real.</p>
+      </div>
+      <div class="card">
+        <h3>ffmpeg, CapCut &amp; Chrome</h3>
+        <p class="role">The Assembly</p>
+        <p>The 4 clips are joined into the 12-second spot, the audio is mixed under a limiter, and the social "Cinematic AI Ad" reel layout is rendered in HTML and composited on top — all respecting <em>Instagram safe-zones</em>.</p>
+      </div>
+    </div>
+    <blockquote class="reveal">
+      <p>"I don't operate a camera. I direct AI — and assemble the result."</p>
+      <cite>— The Doc Mo Workflow</cite>
+    </blockquote>
+  </div>
+</section>
+
+<section id="workflow">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 03</p>
+    <h2 class="reveal">The Workflow — Start to Post</h2>
+    <p class="section-lede reveal">Five steps take this from a blank screen to a posted reel. The whole thing is repeatable for any product — <strong>only the content changes, the system stays the same.</strong></p>
+    <div class="steps reveal">
+      <div class="step">
+        <div>
+          <h3>Generate 5 keyframes</h3>
+          <p>In Nano Banana Pro at 2K, 9:16 — one frame per stage of the story <em>(liquid → forming → fills + drop → stopper → hero)</em>. Lock the first one's look, then the rest inherit the same void, light and palette.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Animate each transition</h3>
+          <p>One Kling 3.0 clip per transition with a START + END frame, 3s, pro, 1080p. <em>The end frame of each clip is the start frame of the next</em> — so the four clips chain together seamlessly.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Concat into the spot</h3>
+          <p>Join the 4 clips in order with ffmpeg → one clean 12-second 1080p spot, 9:16. This is the finished commercial, silent.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Sound design</h3>
+          <p>Generate the SFX + a soft ambient music bed, then place each sound frame-accurate on its beat and mix under a gentle limiter. <em>Silent footage becomes a premium ad.</em></p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>The "Cinematic AI Ad" reel layout</h3>
+          <p>Render the storyboard + prompt overlay in HTML, composite the spot into it, and respect Instagram's safe-zones (title, buttons, caption). That's the post.</p>
+        </div>
+      </div>
+    </div>
+    <blockquote class="reveal">
+      <p>"The machine is built once. For the next product, I just swap the five frames."</p>
+      <cite>— Doc Mo</cite>
+    </blockquote>
+  </div>
+</section>
+
+<section id="prompts">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 04 — Bonus</p>
+    <h2 class="reveal">The Keyframe Prompts — Copy &amp; Use</h2>
+    <p class="section-lede reveal">The exact Nano Banana Pro prompts for all 5 keyframes. Use them as-is, or <strong>swap CHANEL N°5 for your own product</strong> and keep the lighting + void formula.</p>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>01 · Liquid Genesis</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>A single ribbon of liquid champagne-gold perfume coiling and suspended in mid-air, beginning to coalesce into a glowing droplet, no bottle yet. Macro close-up, 85mm lens. Single warm golden key light from upper left, soft rim light. Infinite studio void — burnt sienna base, dark amber mid-tones, near-black top, faint warm vapor drifting. IOR 1.33 golden perfume liquid catching the beam. Cinematic, rich blacks, hyperrealistic fluid surface tension, champagne-gold palette. Shot on full-frame cinema camera. Clean refraction, no distortion. 9:16</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>02 · Flacon Forms</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>A clear rectangular glass perfume flacon materializing in mid-air, half-formed and translucent, its lower half still liquid champagne-gold perfume coalescing upward into the glass shape, floating in an empty void with no floor and no surface beneath it. Macro close-up, 85mm lens. Single warm golden key light from upper left, soft rim light on the forming glass edges. Infinite studio void — burnt sienna base, dark amber mid-tones, near-black top, faint warm vapor drifting. IOR 1.5 clear glass, IOR 1.33 golden perfume liquid. Cinematic, rich blacks, hyperrealistic glass refraction, champagne-gold palette. Shot on full-frame cinema camera. No floor, no puddle, no reflective surface, clean refraction, no distortion. 9:16</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>03 · Fills + Drop</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>The iconic clear rectangular CHANEL N°5 glass flacon fully formed and filled with luminous golden perfume, a single perfume droplet falling toward the open neck. Macro close-up, 85mm lens. Single warm golden key light from upper left, soft rim light, light refracting through the sharp glass edges. Infinite studio void — burnt sienna base, dark amber mid-tones, near-black top. IOR 1.5 glass, IOR 1.33 liquid. Minimalist label reads "N°5" in clean black sans-serif. Cinematic, rich blacks, hyperrealistic, champagne-gold palette. Shot on full-frame cinema camera. Sharp label typography, correct spelling, no distortion. 9:16</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>04 · Stopper Seals</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>Extreme close-up of the CHANEL N°5 flacon neck, the faceted clear glass stopper descending just above the bottle opening, golden perfume glowing within, tiny condensation sparkles on the glass. 85mm lens. Single warm golden key light from upper left catching the stopper facets, soft rim light. Infinite studio void — burnt sienna base, dark amber mid-tones, near-black top. IOR 1.5 faceted glass refracting the beam. Minimalist label reads "CHANEL" above "N°5" in clean black sans-serif. Cinematic, rich blacks, hyperrealistic, champagne-gold palette. Shot on full-frame cinema camera. Sharp typography, correct spelling, no distortion. 9:16</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>05 · Hero</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>Hero beauty shot of the sealed CHANEL N°5 flacon standing centered, faceted glass stopper seated, filled with luminous golden perfume, glowing under a dramatic single warm golden key light from upper left, soft rim light separating the glass from the void. Medium close-up, 85mm lens. Infinite studio void — burnt sienna base, dark amber mid-tones, near-black top, faint warm vapor. IOR 1.5 glass, IOR 1.33 liquid. Minimalist label reads "CHANEL" above "N°5" in clean black sans-serif. Cinematic, rich blacks, hyperrealistic, premium champagne-gold palette. Shot on full-frame cinema camera. Sharp label typography, correct spelling, flawless reflections, no distortion. 9:16</pre>
+    </div>
+
+    <div class="why reveal">
+      <div class="card">
+        <h4>One named light</h4>
+        <p>A single warm golden key light from upper left in every frame. "Cinematic lighting" is noise — a named, directional source is a real instruction.</p>
+      </div>
+      <div class="card">
+        <h4>Physics, not adjectives</h4>
+        <p>IOR 1.5 for glass, IOR 1.33 for the perfume. Describing the cause (refraction index) beats describing the look ("reflective").</p>
+      </div>
+      <div class="card">
+        <h4>Same infinite void + palette</h4>
+        <p>Burnt sienna → amber → near-black, champagne-gold throughout. No floor, no horizon — nothing to drift between frames.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="motion">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 05 — Bonus</p>
+    <h2 class="reveal">The Motion Prompts — How It Moves</h2>
+    <p class="section-lede reveal">Four Kling 3.0 clips, each with a START + END frame, 3 seconds, pro, 1080p, sound off. <strong>The end frame of every clip is the start frame of the next</strong> — so they chain seamlessly into the 12-second spot.</p>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>Clip 1 · KF1 → KF2 — Liquid Becomes Glass</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>The suspended ribbon of golden perfume slowly coalesces and gathers as a clear rectangular glass flacon forms around it. Camera slowly pushes in, then settles and holds. Warm golden light from upper left, drifting vapor. Smooth liquid-to-glass transformation. No warping, no flicker, stable picture.</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>Clip 2 · KF2 → KF3 — Fills With Gold</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>The glass stopper gently lifts away and floats up out of frame as the flacon fills from the base with luminous golden perfume, a single droplet forming above the open neck. Camera holds locked and steady. Warm golden light from upper left. No camera shake, no morphing of the glass, stable picture.</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>Clip 3 · KF3 → KF4 — Drop Falls, Stopper Descends</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>The droplet falls into the open neck as the faceted glass stopper descends from above toward the opening, condensation beading on the glass. Camera slowly dollies in toward the neck, then settles and holds. Warm golden light from upper left. No warping, no jitter, sharp label typography, stable picture.</pre>
+    </div>
+
+    <div class="prompt reveal">
+      <div class="prompt-head"><span>Clip 4 · KF4 → KF5 — Seals + Hero Reveal</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>The faceted stopper settles onto the flacon and seats firmly, sealing the bottle. Camera slowly pulls back to reveal the full sealed CHANEL N°5 flacon, vapor drifting across the frame, then settles and holds. Warm golden light from upper left. No warping, no flicker, sharp label typography, stable picture.</pre>
+    </div>
+
+    <p class="rule-note reveal">The two rules that make it work: <strong>one camera move per clip</strong>, and always end with a closing phrase (<em>"then settles and holds"</em>) so Kling doesn't hang on open-ended motion. Plus the quality suffix on every clip: <code>4K, Ultra HD, rich details, sharp clarity, cinematic texture, no blur, no ghosting, stable picture.</code></p>
+  </div>
+</section>
+
+<section id="sound">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 06</p>
+    <h2 class="reveal">The Sound Design — What Sells the Morph</h2>
+    <p class="section-lede reveal">50–80% of reels are watched on mute — but the ones watched with sound feel ten times more expensive. Every effect is generated with ElevenLabs and dropped <strong>frame-accurate on its beat</strong>, under a soft music bed.</p>
+    <div class="timeline reveal">
+      <div class="beat">
+        <time>0s</time>
+        <h3>Golden shimmer / whoosh</h3>
+        <p>An airy, ethereal shimmer as the liquid gold swirls and coalesces in the void.</p>
+      </div>
+      <div class="beat">
+        <time>~2s</time>
+        <h3>Liquid droplet</h3>
+        <p>A soft, delicate drop with a gentle reverb tail as the form gathers.</p>
+      </div>
+      <div class="beat">
+        <time>~3s</time>
+        <h3>Soft fill</h3>
+        <p>A smooth, premium liquid flow as the flacon fills with gold.</p>
+      </div>
+      <div class="beat">
+        <time>~6s</time>
+        <h3>Droplet into the neck</h3>
+        <p>A single fine plink as the drop lands in the open bottle.</p>
+      </div>
+      <div class="beat">
+        <time>~9s</time>
+        <h3>Crystal glass cling + sparkle</h3>
+        <p>A refined glass chime on the seal, with a fine sparkle tail — the signature moment.</p>
+      </div>
+      <div class="beat">
+        <time>0–12s</time>
+        <h3>Ambient luxury music bed</h3>
+        <p>A soft warm pad under everything, faded in and out, kept low so the effects breathe.</p>
+      </div>
+    </div>
+    <p class="rule-note reveal"><strong>Mix tip:</strong> push the effects to the front, keep the music quiet, and run the whole mix through a gentle limiter so nothing clips. The glass cling on the seal is the beat people remember.</p>
+  </div>
+</section>
+
+<section id="pitfalls">
+  <div class="wrap">
+    <p class="ch-label reveal">Chapter 07</p>
+    <h2 class="reveal">The Pitfalls — What Breaks It</h2>
+    <p class="section-lede reveal">Every one of these was found the hard way. None throw an error — they just look wrong, or quietly waste a generation.</p>
+    <div class="pitfalls reveal">
+      <div class="pitfall"><span class="num">01</span><h3>Morph back-loads</h3><p>Most of the liquid-to-glass transformation lands in the last half of the clip, leaving the first half feeling static.</p></div>
+      <div class="pitfall"><span class="num">02</span><h3>Stopper continuity blink</h3><p>The formed bottle already has a stopper, but the next stage shows an open neck — so the stopper appears to flicker between frames.</p></div>
+      <div class="pitfall"><span class="num">03</span><h3>Preset hijack</h3><p>Kling's auto preset suggestion silently overrides your custom prompt, and the result ignores everything you wrote.</p></div>
+      <div class="pitfall"><span class="num">04</span><h3>End-frame freeze</h3><p>A fixed end frame decelerates the entire scene onto that still — the world "parks" at the end of the clip.</p></div>
+      <div class="pitfall"><span class="num">05</span><h3>Rigid glass warps</h3><p>On a big reframe between start and end, the rigid bottle geometry morphs and "swims" instead of staying solid.</p></div>
+      <div class="pitfall"><span class="num">06</span><h3>Label text drift</h3><p>The "N°5" text on glass renders inconsistently across frames unless the typography is pinned in the prompt.</p></div>
+      <div class="pitfall"><span class="num">07</span><h3>Flat, lifeless sound</h3><p>Without mapping each effect to its exact beat, the audio feels generic and the morph stops feeling real.</p></div>
+      <div class="pitfall"><span class="num">08</span><h3>Instagram safe-zones</h3><p>Title and CTA placed too high or too low vanish behind the app's UI — header, buttons and caption.</p></div>
+    </div>
+    <p class="rule-note reveal">The exact fixes — the prompt lines, the timings, the mix — aren't in this guide, by design. Knowing these eight exist is most of the fix. Each one cost real time on this build; that's the part no prompt gives you.</p>
+  </div>
+</section>
+
+<section id="work" class="cta">
+  <div class="wrap">
+    <div class="cta-grid">
+      <figure class="hero-img reveal">
+        <img src="assets/kf4-stopper-seals.jpg" alt="Extreme close-up of the faceted glass stopper descending over the flacon neck" loading="lazy">
+      </figure>
+      <div>
+        <p class="ch-label reveal">Chapter 08</p>
+        <h2 class="reveal">Want This For Your Brand?</h2>
+        <p class="section-lede reveal">A cinematic product ad like this — at a traditional studio — is a <strong>€20,000–€50,000 shoot booked weeks out</strong>. Here's what you get working with Doc Mo, built in days, entirely with AI.</p>
+        <ul class="offer reveal">
+          <li><strong>A cinematic AI ad — built for your product</strong>Perfume, spirits, watches, sneakers, supplements, food. Your product gets its own keyframes, its own palette, its own 12-second build film — ready for Reels and TikTok.</li>
+          <li><strong>No studio, no camera, no shoot</strong>Every frame generated and animated with AI, with full sound design and a social-ready reel layout. No photographer invoice, no waiting weeks.</li>
+          <li><strong>A lead-magnet funnel around it</strong>The reel, the "comment-to-DM" keyword, and a guide like this one — the same system you're reading right now, set up for your brand.</li>
+          <li><strong>Live in days, not months</strong>From brief to posted reel in a fraction of the time and cost of a traditional production.</li>
+        </ul>
+        <div class="hero-cta reveal">
+          <a class="btn btn-gold" href="https://docmo.agency" target="_blank" rel="noopener">See the finished ad → docmo.agency</a>
+        </div>
+        <div class="socials reveal">
+          <a href="https://instagram.com/docmo.agency" target="_blank" rel="noopener"><b>Instagram</b>@docmo.agency</a>
+          <a href="https://tiktok.com/@docmo.agency" target="_blank" rel="noopener"><b>TikTok</b>@docmo.agency</a>
+          <a href="https://docmo.agency" target="_blank" rel="noopener"><b>Website</b>docmo.agency</a>
+        </div>
+        <p class="section-lede reveal" style="margin-top: 32px; margin-bottom: 0;"><strong>Building a brand?</strong> You don't have to build this. DM <strong>'WEBSITE'</strong> on Instagram or TikTok — I'll build yours in days, not months.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>© 2026 Doc Mo · docmo.agency</p>
+    <p class="fine">This is an independent spec / concept project and educational guide. All visuals are AI-generated. Not affiliated with, sponsored by, or endorsed by CHANEL. "CHANEL" and "N°5" are trademarks of their respective owner.</p>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll(".copy-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.closest(".prompt").querySelector("pre").textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "Copied";
+        btn.classList.add("done");
+        setTimeout(function () {
+          btn.textContent = "Copy";
+          btn.classList.remove("done");
+        }, 1600);
+      });
+    });
+  });
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+</script>
+
+</body>
+</html>

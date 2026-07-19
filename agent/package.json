@@ -1,0 +1,18 @@
+{
+  "name": "mini-code-agent",
+  "version": "1.0.0",
+  "description": "Un assistant de code agentique en ligne de commande, propulsé par l'API Claude (tools : bash, lecture/écriture de fichiers).",
+  "type": "module",
+  "bin": {
+    "mini-code-agent": "./agent.js"
+  },
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0"
+  }
+}

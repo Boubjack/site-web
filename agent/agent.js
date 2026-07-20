@@ -1,25 +1,28 @@
 #!/usr/bin/env node
 // mini-code-agent — un assistant de code agentique en ligne de commande,
-// propulsé par l'API Claude. Il raisonne, exécute des commandes bash et
-// lit/écrit des fichiers dans le répertoire courant, en bouclant jusqu'à
-// ce que la tâche soit terminée — comme Claude Code, en miniature.
+// propulsé par l'API Claude. Conçu pour ressembler à Claude Code : boucle
+// modèle → outils → résultats, pensée adaptative, contexte projet (CLAUDE.md),
+// cache de prompt, suivi du coût, todos, recherche web, persistance de session,
+// mode non interactif et interruption par Ctrl+C.
 
 import Anthropic from "@anthropic-ai/sdk";
 import readline from "node:readline";
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 const MODEL = process.env.AGENT_MODEL || "claude-opus-4-8";
 const MAX_TOKENS = 16000;
 const ROOT = process.cwd();
-// AUTO_APPROVE=1 (ou --yes) exécute les actions sensibles sans confirmation.
-const AUTO_APPROVE =
+const THINKING = process.env.AGENT_THINKING !== "0"; // pensée adaptative (défaut ON)
+const WEB = process.env.AGENT_WEB !== "0"; // outils web (défaut ON)
+const CONTINUE = process.argv.includes("--continue"); // reprend la dernière session
+// AUTO_APPROVE=1, --yes, ou le mode non interactif exécutent sans confirmation.
+let autoApprove =
   process.env.AUTO_APPROVE === "1" || process.argv.includes("--yes");
-// Pensée adaptative activée par défaut (AGENT_THINKING=0 pour la désactiver).
-const THINKING = process.env.AGENT_THINKING !== "0";
 
 let client;
 function getClient() {
@@ -33,6 +36,19 @@ function getClient() {
   return (client ??= new Anthropic());
 }
 
+// ─── Couleurs terminal ──────────────────────────────────────────────────────
+
+const c = {
+  dim: (s) => `\x1b[2m${s}\x1b[0m`,
+  bold: (s) => `\x1b[1m${s}\x1b[0m`,
+  cyan: (s) => `\x1b[36m${s}\x1b[0m`,
+  green: (s) => `\x1b[32m${s}\x1b[0m`,
+  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
+  red: (s) => `\x1b[31m${s}\x1b[0m`,
+  accent: (s) => `\x1b[38;5;209m${s}\x1b[0m`,
+};
+const truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
 // ─── Sécurité : confiner les chemins au répertoire du projet ────────────────
 
 function resolveInside(p) {
@@ -45,10 +61,8 @@ function resolveInside(p) {
   return abs;
 }
 
-// Répertoires ignorés lors des parcours (glob/grep).
-const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next"]);
+const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next", ".mini-agent"]);
 
-// Parcours récursif des fichiers sous `dir`, en ignorant IGNORE.
 function* walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (IGNORE.has(entry.name)) continue;
@@ -58,7 +72,6 @@ function* walk(dir) {
   }
 }
 
-// Convertit un motif glob (**, *, ?) en expression régulière.
 function globToRegExp(glob) {
   let re = "";
   for (let i = 0; i < glob.length; i++) {
@@ -67,29 +80,34 @@ function globToRegExp(glob) {
       if (glob[i + 1] === "*") {
         re += ".*";
         i++;
-        if (glob[i + 1] === "/") i++; // **/ = zéro ou plusieurs dossiers
-      } else {
-        re += "[^/]*";
-      }
+        if (glob[i + 1] === "/") i++;
+      } else re += "[^/]*";
     } else if (ch === "?") re += "[^/]";
     else re += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
   }
   return new RegExp("^" + re + "$");
 }
 
+// ─── Todos (comme l'outil TodoWrite de Claude Code) ─────────────────────────
+
+let todos = [];
+function renderTodos() {
+  if (!todos.length) return "(liste de tâches vide)";
+  const mark = { pending: "○", in_progress: "◐", completed: "●" };
+  return todos.map((t) => `${mark[t.status] || "○"} ${t.content}`).join("\n");
+}
+
 // ─── Définition des outils ──────────────────────────────────────────────────
 
-const tools = [
+const clientTools = [
   {
     name: "bash",
     description:
-      "Exécute une commande shell dans le répertoire du projet et renvoie stdout+stderr. " +
-      "À utiliser pour lister des fichiers, lancer des tests, git, build, etc.",
+      "Exécute une commande shell dans le répertoire du projet et renvoie " +
+      "stdout+stderr. À utiliser pour lister, tester, git, build, etc.",
     input_schema: {
       type: "object",
-      properties: {
-        command: { type: "string", description: "La commande à exécuter." },
-      },
+      properties: { command: { type: "string", description: "La commande." } },
       required: ["command"],
     },
   },
@@ -98,9 +116,7 @@ const tools = [
     description: "Lit et renvoie le contenu texte d'un fichier du projet.",
     input_schema: {
       type: "object",
-      properties: {
-        path: { type: "string", description: "Chemin du fichier à lire." },
-      },
+      properties: { path: { type: "string", description: "Chemin du fichier." } },
       required: ["path"],
     },
   },
@@ -111,8 +127,8 @@ const tools = [
     input_schema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Chemin du fichier à écrire." },
-        content: { type: "string", description: "Contenu complet du fichier." },
+        path: { type: "string", description: "Chemin du fichier." },
+        content: { type: "string", description: "Contenu complet." },
       },
       required: ["path", "content"],
     },
@@ -125,7 +141,7 @@ const tools = [
     input_schema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Chemin du fichier à modifier." },
+        path: { type: "string", description: "Chemin du fichier." },
         old_str: { type: "string", description: "Texte exact à remplacer." },
         new_str: { type: "string", description: "Texte de remplacement." },
       },
@@ -137,51 +153,72 @@ const tools = [
     description: "Liste les fichiers et dossiers d'un répertoire du projet.",
     input_schema: {
       type: "object",
-      properties: {
-        path: { type: "string", description: "Répertoire à lister (défaut : .)." },
-      },
+      properties: { path: { type: "string", description: "Répertoire (défaut : .)." } },
     },
   },
   {
     name: "glob",
     description:
       "Recherche les fichiers dont le chemin correspond à un motif glob " +
-      "(ex. « **/*.js », « src/**/*.ts »). Ignore node_modules, .git, dist, build.",
+      "(ex. « **/*.js »). Ignore node_modules, .git, dist, build.",
     input_schema: {
       type: "object",
-      properties: {
-        pattern: { type: "string", description: "Motif glob (**, *, ? supportés)." },
-      },
+      properties: { pattern: { type: "string", description: "Motif glob." } },
       required: ["pattern"],
     },
   },
   {
     name: "grep",
     description:
-      "Recherche une expression régulière dans le contenu des fichiers et " +
-      "renvoie les correspondances au format fichier:ligne:texte.",
+      "Recherche une expression régulière dans le contenu des fichiers " +
+      "(format fichier:ligne:texte).",
     input_schema: {
       type: "object",
       properties: {
-        pattern: { type: "string", description: "Expression régulière à chercher." },
-        path: {
-          type: "string",
-          description: "Sous-répertoire où chercher (défaut : .).",
-        },
-        glob: {
-          type: "string",
-          description: "Filtre glob optionnel sur les fichiers (ex. « **/*.js »).",
-        },
+        pattern: { type: "string", description: "Expression régulière." },
+        path: { type: "string", description: "Sous-répertoire (défaut : .)." },
+        glob: { type: "string", description: "Filtre glob optionnel." },
       },
       required: ["pattern"],
     },
   },
+  {
+    name: "todo_write",
+    description:
+      "Gère la liste de tâches. Remplace la liste entière. À utiliser pour " +
+      "planifier et suivre les étapes des tâches complexes (multi-étapes).",
+    input_schema: {
+      type: "object",
+      properties: {
+        todos: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              content: { type: "string" },
+              status: { type: "string", enum: ["pending", "in_progress", "completed"] },
+            },
+            required: ["content", "status"],
+          },
+        },
+      },
+      required: ["todos"],
+    },
+  },
 ];
 
-// Actions modifiant l'état → confirmation demandée (sauf AUTO_APPROVE).
+// Outils serveur (exécutés côté Anthropic, aucune implémentation locale).
+const serverTools = [
+  { type: "web_search_20260209", name: "web_search", max_uses: 5 },
+  { type: "web_fetch_20260209", name: "web_fetch", max_uses: 5 },
+];
+
+const tools = [...clientTools, ...(WEB ? serverTools : [])];
+
+// Actions modifiant l'état → confirmation demandée (sauf auto-approve).
 const SENSITIVE = new Set(["bash", "write_file", "edit_file"]);
 
-// ─── Exécution des outils ───────────────────────────────────────────────────
+// ─── Exécution des outils clients ───────────────────────────────────────────
 
 function runTool(name, input) {
   switch (name) {
@@ -203,10 +240,8 @@ function runTool(name, input) {
         throw new Error(parts.join("\n").trim());
       }
     }
-    case "read_file": {
-      const abs = resolveInside(input.path);
-      return fs.readFileSync(abs, "utf8");
-    }
+    case "read_file":
+      return fs.readFileSync(resolveInside(input.path), "utf8");
     case "write_file": {
       const abs = resolveInside(input.path);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -219,9 +254,7 @@ function runTool(name, input) {
       const count = orig.split(input.old_str).length - 1;
       if (count === 0) throw new Error("old_str introuvable dans le fichier.");
       if (count > 1)
-        throw new Error(
-          `old_str apparaît ${count} fois (doit être unique). Ajoutez du contexte.`,
-        );
+        throw new Error(`old_str apparaît ${count} fois (doit être unique).`);
       fs.writeFileSync(abs, orig.replace(input.old_str, input.new_str));
       return `Modifié ${input.path}.`;
     }
@@ -241,9 +274,7 @@ function runTool(name, input) {
         if (matches.length >= 500) break;
       }
       matches.sort();
-      return matches.length
-        ? matches.join("\n")
-        : "(aucun fichier ne correspond)";
+      return matches.length ? matches.join("\n") : "(aucun fichier ne correspond)";
     }
     case "grep": {
       let re;
@@ -262,9 +293,9 @@ function runTool(name, input) {
         try {
           text = fs.readFileSync(abs, "utf8");
         } catch {
-          continue; // binaire / illisible
+          continue;
         }
-        if (text.includes("\u0000")) continue; // saute les fichiers binaires
+        if (text.includes("\u0000")) continue; // saute les binaires
         const lines = text.split("\n");
         for (let i = 0; i < lines.length; i++) {
           if (re.test(lines[i])) {
@@ -276,85 +307,206 @@ function runTool(name, input) {
       }
       return out.length ? out.join("\n") : "(aucune correspondance)";
     }
+    case "todo_write": {
+      todos = Array.isArray(input.todos) ? input.todos : [];
+      return "Liste de tâches mise à jour :\n" + renderTodos();
+    }
     default:
       throw new Error(`Outil inconnu : ${name}`);
   }
 }
 
+// ─── Suivi de l'usage et du coût ────────────────────────────────────────────
+
+const PRICES = {
+  "claude-opus-4-8": [5, 25],
+  "claude-opus-4-7": [5, 25],
+  "claude-opus-4-6": [5, 25],
+  "claude-sonnet-5": [3, 15],
+  "claude-sonnet-4-6": [3, 15],
+  "claude-haiku-4-5": [1, 5],
+  "claude-fable-5": [10, 50],
+};
+let usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+function addUsage(u) {
+  if (!u) return;
+  usage.input += u.input_tokens || 0;
+  usage.output += u.output_tokens || 0;
+  usage.cacheRead += u.cache_read_input_tokens || 0;
+  usage.cacheWrite += u.cache_creation_input_tokens || 0;
+}
+function estimateCost() {
+  const [pin, pout] = PRICES[MODEL] || [5, 25];
+  return (
+    (usage.input * pin +
+      usage.cacheRead * pin * 0.1 +
+      usage.cacheWrite * pin * 1.25 +
+      usage.output * pout) /
+    1e6
+  );
+}
+function costLine() {
+  return c.dim(
+    `  tokens — entrée ${usage.input} · sortie ${usage.output} · ` +
+      `cache(lu ${usage.cacheRead}/écrit ${usage.cacheWrite}) · ` +
+      `≈ $${estimateCost().toFixed(4)}`,
+  );
+}
+
+// ─── Contexte projet (CLAUDE.md) ────────────────────────────────────────────
+
+function loadProjectContext() {
+  for (const name of ["CLAUDE.md", "AGENTS.md"]) {
+    const p = path.join(ROOT, name);
+    if (fs.existsSync(p)) {
+      try {
+        return `\n\n# Contexte du projet (${name})\n${fs.readFileSync(p, "utf8").slice(0, 8000)}`;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return "";
+}
+const PROJECT_CONTEXT = loadProjectContext();
+
+const SYSTEM = [
+  {
+    type: "text",
+    text:
+      `Tu es mini-code-agent, un assistant de programmation autonome qui travaille dans ${ROOT}.\n` +
+      `Tu disposes d'outils pour exécuter des commandes bash, lire/écrire/éditer des fichiers, ` +
+      `chercher (glob, grep)${WEB ? ", chercher sur le web (web_search, web_fetch)" : ""}, ` +
+      `et suivre des tâches (todo_write).\n` +
+      `Accomplis la tâche de bout en bout : explore avant de modifier, fais des changements ciblés, ` +
+      `et vérifie ton travail (tests, lint, build) quand c'est pertinent. Pour toute tâche à ` +
+      `plusieurs étapes, planifie-la avec todo_write et tiens la liste à jour.\n` +
+      `Sois concis : annonce brièvement ce que tu fais, agis via les outils, puis résume. ` +
+      `Quand tu as assez d'informations pour agir, agis.` +
+      PROJECT_CONTEXT,
+    cache_control: { type: "ephemeral" }, // cache le prompt système + les outils
+  },
+];
+
+// ─── Persistance de session ─────────────────────────────────────────────────
+
+const SESSION_DIR = path.join(ROOT, ".mini-agent");
+const SESSION_FILE = path.join(SESSION_DIR, "session.json");
+function saveSession() {
+  try {
+    fs.mkdirSync(SESSION_DIR, { recursive: true });
+    fs.writeFileSync(
+      SESSION_FILE,
+      JSON.stringify({ model: MODEL, messages, usage, todos }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+function loadSession() {
+  try {
+    const s = JSON.parse(fs.readFileSync(SESSION_FILE, "utf8"));
+    if (Array.isArray(s.messages)) messages.push(...s.messages);
+    if (s.usage) usage = s.usage;
+    if (Array.isArray(s.todos)) todos = s.todos;
+    return messages.length;
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Interface terminal ─────────────────────────────────────────────────────
 
-const c = {
-  dim: (s) => `\x1b[2m${s}\x1b[0m`,
-  bold: (s) => `\x1b[1m${s}\x1b[0m`,
-  cyan: (s) => `\x1b[36m${s}\x1b[0m`,
-  green: (s) => `\x1b[32m${s}\x1b[0m`,
-  yellow: (s) => `\x1b[33m${s}\x1b[0m`,
-  red: (s) => `\x1b[31m${s}\x1b[0m`,
-  accent: (s) => `\x1b[38;5;209m${s}\x1b[0m`,
-};
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const ask = (q) => new Promise((res) => rl.question(q, res));
+let rl = null;
+const ask = (q) =>
+  new Promise((res) => (rl ? rl.question(q, res) : res("")));
 
 async function confirm(name, input) {
-  if (AUTO_APPROVE || !SENSITIVE.has(name)) return true;
+  if (autoApprove || !SENSITIVE.has(name)) return true;
   const preview =
-    name === "bash"
-      ? input.command
-      : input.path + (name === "edit_file" ? " (edit)" : "");
-  const a = (await ask(c.yellow(`  ⚠  ${name}: ${preview}  [O/n] `))).trim().toLowerCase();
+    name === "bash" ? input.command : input.path + (name === "edit_file" ? " (edit)" : "");
+  const a = (await ask(c.yellow(`  ⚠  ${name}: ${truncate(preview, 70)}  [O/n] `)))
+    .trim()
+    .toLowerCase();
   return a === "" || a === "o" || a === "y" || a === "oui";
 }
 
-const SYSTEM = `Tu es mini-code-agent, un assistant de programmation autonome qui travaille dans le répertoire ${ROOT}.
-Tu disposes d'outils pour exécuter des commandes bash et lire/écrire des fichiers. Sers-t'en pour accomplir la tâche de bout en bout : explore le code avant de le modifier, fais des changements ciblés, et vérifie ton travail (tests, lint, build) quand c'est pertinent.
-Sois concis. Annonce brièvement ce que tu fais, agis via les outils, puis résume le résultat. Quand tu as assez d'informations pour agir, agis.`;
+function printDiff(name, input) {
+  if (name === "edit_file") {
+    const del = String(input.old_str).split("\n").slice(0, 6);
+    const add = String(input.new_str).split("\n").slice(0, 6);
+    for (const l of del) console.log(c.red("    - " + truncate(l, 80)));
+    for (const l of add) console.log(c.green("    + " + truncate(l, 80)));
+  } else if (name === "write_file") {
+    const lines = String(input.content).split("\n").length;
+    console.log(c.green(`    + ${lines} ligne(s) → ${input.path}`));
+  }
+}
 
 // ─── Boucle agentique ───────────────────────────────────────────────────────
 
 const messages = [];
+let currentAbort = null;
 
 async function runTurn(userInput) {
   messages.push({ role: "user", content: userInput });
 
   while (true) {
-    const stream = getClient().messages.stream({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: SYSTEM,
-      tools,
-      messages,
-      ...(THINKING
-        ? { thinking: { type: "adaptive", display: "summarized" } }
-        : {}),
-    });
+    const ac = new AbortController();
+    currentAbort = ac;
+    let response;
+    try {
+      const stream = getClient().messages.stream(
+        {
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          system: SYSTEM,
+          tools,
+          messages,
+          ...(THINKING ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
+        },
+        { signal: ac.signal },
+      );
 
-    let mode = null; // "thinking" | "text"
-    stream.on("thinking", (delta) => {
-      if (mode !== "thinking") {
-        process.stdout.write(c.dim("\n  · réflexion : "));
-        mode = "thinking";
+      let mode = null;
+      stream.on("thinking", (delta) => {
+        if (mode !== "thinking") {
+          process.stdout.write(c.dim("\n  · réflexion : "));
+          mode = "thinking";
+        }
+        process.stdout.write(c.dim(delta));
+      });
+      stream.on("text", (delta) => {
+        if (mode !== "text") {
+          process.stdout.write(mode === "thinking" ? "\n\n" : "");
+          mode = "text";
+        }
+        process.stdout.write(delta);
+      });
+
+      response = await stream.finalMessage();
+      if (mode) process.stdout.write("\n");
+    } catch (e) {
+      if (ac.signal.aborted) {
+        console.log(c.dim("\n  ⏹ interrompu."));
+        return;
       }
-      process.stdout.write(c.dim(delta));
-    });
-    stream.on("text", (delta) => {
-      if (mode !== "text") {
-        process.stdout.write(mode === "thinking" ? "\n\n" : "");
-        mode = "text";
-      }
-      process.stdout.write(delta);
-    });
+      throw e;
+    } finally {
+      currentAbort = null;
+    }
 
-    const response = await stream.finalMessage();
-    if (mode) process.stdout.write("\n");
-
+    addUsage(response.usage);
     messages.push({ role: "assistant", content: response.content });
+    saveSession();
 
+    // pause_turn : un outil serveur a atteint sa limite d'itérations → on relance.
+    if (response.stop_reason === "pause_turn") continue;
     if (response.stop_reason !== "tool_use") break;
 
     const toolResults = [];
     for (const block of response.content) {
-      if (block.type !== "tool_use") continue;
+      if (block.type !== "tool_use") continue; // ignore les blocs d'outils serveur
 
       const approved = await confirm(block.name, block.input);
       if (!approved) {
@@ -371,11 +523,9 @@ async function runTurn(userInput) {
       console.log(c.dim(`  ↳ ${block.name}(${summarize(block.input)})`));
       try {
         const result = runTool(block.name, block.input);
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: result,
-        });
+        printDiff(block.name, block.input);
+        if (block.name === "todo_write") console.log(c.dim(indent(renderTodos())));
+        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
       } catch (e) {
         console.log(c.red(`    ✗ ${e.message.split("\n")[0]}`));
         toolResults.push({
@@ -388,16 +538,40 @@ async function runTurn(userInput) {
     }
 
     messages.push({ role: "user", content: toolResults });
+    saveSession();
   }
 }
 
 function summarize(input) {
   if (input.command) return truncate(input.command, 60);
   if (input.path) return input.path;
+  if (input.pattern) return truncate(input.pattern, 40);
+  if (input.todos) return `${input.todos.length} tâche(s)`;
   return "";
 }
-function truncate(s, n) {
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+const indent = (s) => s.split("\n").map((l) => "    " + l).join("\n");
+
+// ─── Compaction de l'historique ─────────────────────────────────────────────
+
+async function compact() {
+  if (!messages.length) return console.log(c.dim("  rien à compacter."));
+  const r = await getClient().messages.create({
+    model: MODEL,
+    max_tokens: 2048,
+    system:
+      "Résume la conversation en conservant les décisions prises, les fichiers " +
+      "modifiés et l'état actuel de la tâche, pour reprendre le travail.",
+    messages: [
+      ...messages,
+      { role: "user", content: "Résume tout ce qui précède en un mémo concis." },
+    ],
+  });
+  addUsage(r.usage);
+  const summary = r.content.find((b) => b.type === "text")?.text || "";
+  messages.length = 0;
+  messages.push({ role: "user", content: `Résumé de la session précédente :\n${summary}` });
+  saveSession();
+  console.log(c.dim("  historique compacté."));
 }
 
 // ─── REPL ───────────────────────────────────────────────────────────────────
@@ -410,52 +584,124 @@ function banner() {
   └─────────────────────────────────────────────┘`),
   );
   console.log(
-    c.dim(`  modèle : ${MODEL}   dossier : ${ROOT}`) +
-      (AUTO_APPROVE ? c.yellow("   [auto-approve]") : ""),
+    c.dim(`  modèle : ${MODEL}   dossier : ${ROOT}   outils : ${tools.length}`) +
+      (autoApprove ? c.yellow("   [auto-approve]") : "") +
+      (PROJECT_CONTEXT ? c.dim("   [CLAUDE.md]") : ""),
   );
-  console.log(
-    c.dim("  Commandes : /help, /clear, /exit — ou décrivez une tâche.\n"),
-  );
+  console.log(c.dim("  /help pour les commandes — ou décrivez une tâche.\n"));
 }
 
 const HELP = `${c.bold("Commandes :")}
-  /help    affiche cette aide
-  /clear   réinitialise la conversation
-  /exit    quitte
+  /help          affiche cette aide
+  /clear         réinitialise la conversation
+  /compact       résume et allège l'historique
+  /cost          affiche l'usage de tokens et le coût estimé
+  /todos         affiche la liste de tâches
+  /model <id>    change de modèle (relance requise pour l'effet complet)
+  /tools         liste les outils disponibles
+  /init          demande à l'agent de générer un CLAUDE.md
+  /exit          quitte
 Tout autre texte est envoyé à l'agent comme une tâche.
 
-${c.bold("Astuce :")} les commandes bash et les écritures de fichiers demandent
-confirmation. Lancez avec --yes (ou AUTO_APPROVE=1) pour tout auto-approuver.`;
+${c.bold("Options CLI :")} --yes (auto-approuve), --continue (reprend la session),
+  -p "tâche" (mode non interactif). Env : AGENT_MODEL, AGENT_THINKING=0,
+  AGENT_WEB=0, AUTO_APPROVE=1.
+
+${c.bold("Astuce :")} Ctrl+C interrompt la réponse en cours ; au repos, il quitte.`;
+
+async function handleCommand(line) {
+  if (line === "/exit" || line === "/quit") return "exit";
+  if (line === "/help") return void console.log(HELP);
+  if (line === "/clear") {
+    messages.length = 0;
+    todos = [];
+    try {
+      fs.rmSync(SESSION_FILE, { force: true });
+    } catch {}
+    return void console.log(c.dim("  conversation réinitialisée."));
+  }
+  if (line === "/compact") return void (await compact());
+  if (line === "/cost") return void console.log(costLine());
+  if (line === "/todos") return void console.log(c.dim(indent(renderTodos())));
+  if (line === "/tools")
+    return void console.log(c.dim("  " + tools.map((t) => t.name).join(", ")));
+  if (line.startsWith("/model ")) {
+    console.log(c.dim("  Relancez avec AGENT_MODEL=" + line.slice(7).trim()));
+    return;
+  }
+  if (line === "/init")
+    return "Analyse ce dépôt (structure, langages, commandes de build/test/lint, " +
+      "conventions) et écris un fichier CLAUDE.md concis pour de futurs agents.";
+  return null; // pas une commande
+}
 
 async function main() {
+  // Mode non interactif : -p "tâche" ou entrée redirigée (pipe).
+  let oneShot = null;
+  const pi = process.argv.indexOf("-p");
+  if (pi !== -1) oneShot = process.argv[pi + 1] ?? "";
+  else if (!process.stdin.isTTY) oneShot = (await readAllStdin()).trim();
+
+  if (CONTINUE) {
+    const n = loadSession();
+    if (n) console.log(c.dim(`  session reprise (${n} messages).`));
+  }
+
+  if (oneShot != null && oneShot !== "") {
+    autoApprove = true; // non interactif → pas de confirmation possible
+    await safeTurn(oneShot);
+    return;
+  }
+
   banner();
+  rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.on("SIGINT", () => {
+    if (currentAbort) currentAbort.abort();
+    else {
+      console.log();
+      rl.close();
+      process.exit(0);
+    }
+  });
+
   while (true) {
     const line = (await ask(c.cyan("› "))).trim();
     if (!line) continue;
-    if (line === "/exit" || line === "/quit") break;
-    if (line === "/help") {
-      console.log(HELP);
+    if (line.startsWith("/")) {
+      const r = await handleCommand(line);
+      if (r === "exit") break;
+      if (typeof r === "string") {
+        await safeTurn(r);
+        console.log(costLine());
+      }
+      console.log();
       continue;
     }
-    if (line === "/clear") {
-      messages.length = 0;
-      console.log(c.dim("  conversation réinitialisée."));
-      continue;
-    }
-    try {
-      await runTurn(line);
-    } catch (e) {
-      console.error(c.red(`\nErreur : ${e.message}`));
-    }
-    console.log();
+    await safeTurn(line);
+    console.log(costLine() + "\n");
   }
   rl.close();
 }
 
-// Ne lance le REPL que si le fichier est exécuté directement (pas à l'import).
-import { pathToFileURL } from "node:url";
+async function safeTurn(line) {
+  try {
+    await runTurn(line);
+  } catch (e) {
+    console.error(c.red(`\nErreur : ${e.message}`));
+  }
+}
+
+function readAllStdin() {
+  return new Promise((res) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (d) => (data += d));
+    process.stdin.on("end", () => res(data));
+  });
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
 
-export { runTool, tools, resolveInside };
+export { runTool, tools, resolveInside, globToRegExp, renderTodos, estimateCost, loadProjectContext };

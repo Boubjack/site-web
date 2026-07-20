@@ -6,7 +6,7 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes bash e
 
 ## Ce qu'il sait faire
 
-L'agent dispose de 5 outils, que Claude décide d'appeler lui-même :
+L'agent dispose de 7 outils, que Claude décide d'appeler lui-même :
 
 | Outil | Rôle |
 |-------|------|
@@ -15,10 +15,13 @@ L'agent dispose de 5 outils, que Claude décide d'appeler lui-même :
 | `write_file` | Crée ou écrase un fichier |
 | `edit_file` | Remplace une portion de texte dans un fichier |
 | `list_dir` | Liste un répertoire |
+| `glob` | Recherche des fichiers par motif (`**/*.js`, `src/**/*.ts`…) |
+| `grep` | Recherche une expression régulière dans le contenu des fichiers (`fichier:ligne:texte`) |
 
 - **Boucle agentique** : le modèle enchaîne les appels d'outils jusqu'à la fin de la tâche (`stop_reason` géré manuellement).
-- **Streaming** : les réponses s'affichent au fil de l'eau.
-- **Garde-fous** : les actions sensibles (`bash`, `write_file`, `edit_file`) demandent une confirmation, et tous les accès fichiers sont confinés au répertoire du projet (pas de `../../etc/passwd`).
+- **Pensée adaptative** : comme Claude Code, le modèle réfléchit avant d'agir ; le résumé de son raisonnement s'affiche en grisé (désactivable via `AGENT_THINKING=0`).
+- **Streaming** : réflexion et réponses s'affichent au fil de l'eau.
+- **Garde-fous** : les actions sensibles (`bash`, `write_file`, `edit_file`) demandent une confirmation ; `glob`/`grep`/`read_file`/`list_dir` sont en lecture seule et ignorent `node_modules`, `.git`, `dist`, `build` ; tous les accès fichiers sont confinés au répertoire du projet (pas de `../../etc/passwd`).
 
 ## Installation
 
@@ -52,6 +55,7 @@ L'agent va explorer le code, proposer ses commandes (que vous approuvez), modifi
 
 - `--yes` (ou `AUTO_APPROVE=1`) : auto-approuve toutes les actions sensibles (mode non interactif).
 - `AGENT_MODEL=claude-opus-4-8` : choisit le modèle (défaut : `claude-opus-4-8`).
+- `AGENT_THINKING=0` : désactive la pensée adaptative (par défaut activée).
 
 ## Comment ça marche
 

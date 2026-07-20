@@ -18,6 +18,8 @@ const ROOT = process.cwd();
 // AUTO_APPROVE=1 (ou --yes) exécute les actions sensibles sans confirmation.
 const AUTO_APPROVE =
   process.env.AUTO_APPROVE === "1" || process.argv.includes("--yes");
+// Pensée adaptative activée par défaut (AGENT_THINKING=0 pour la désactiver).
+const THINKING = process.env.AGENT_THINKING !== "0";
 
 let client;
 function getClient() {
@@ -41,6 +43,38 @@ function resolveInside(p) {
     );
   }
   return abs;
+}
+
+// Répertoires ignorés lors des parcours (glob/grep).
+const IGNORE = new Set(["node_modules", ".git", "dist", "build", ".next"]);
+
+// Parcours récursif des fichiers sous `dir`, en ignorant IGNORE.
+function* walk(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (IGNORE.has(entry.name)) continue;
+    const abs = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* walk(abs);
+    else if (entry.isFile()) yield abs;
+  }
+}
+
+// Convertit un motif glob (**, *, ?) en expression régulière.
+function globToRegExp(glob) {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const ch = glob[i];
+    if (ch === "*") {
+      if (glob[i + 1] === "*") {
+        re += ".*";
+        i++;
+        if (glob[i + 1] === "/") i++; // **/ = zéro ou plusieurs dossiers
+      } else {
+        re += "[^/]*";
+      }
+    } else if (ch === "?") re += "[^/]";
+    else re += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp("^" + re + "$");
 }
 
 // ─── Définition des outils ──────────────────────────────────────────────────
@@ -108,6 +142,40 @@ const tools = [
       },
     },
   },
+  {
+    name: "glob",
+    description:
+      "Recherche les fichiers dont le chemin correspond à un motif glob " +
+      "(ex. « **/*.js », « src/**/*.ts »). Ignore node_modules, .git, dist, build.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Motif glob (**, *, ? supportés)." },
+      },
+      required: ["pattern"],
+    },
+  },
+  {
+    name: "grep",
+    description:
+      "Recherche une expression régulière dans le contenu des fichiers et " +
+      "renvoie les correspondances au format fichier:ligne:texte.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Expression régulière à chercher." },
+        path: {
+          type: "string",
+          description: "Sous-répertoire où chercher (défaut : .).",
+        },
+        glob: {
+          type: "string",
+          description: "Filtre glob optionnel sur les fichiers (ex. « **/*.js »).",
+        },
+      },
+      required: ["pattern"],
+    },
+  },
 ];
 
 // Actions modifiant l'état → confirmation demandée (sauf AUTO_APPROVE).
@@ -164,6 +232,50 @@ function runTool(name, input) {
         .map((d) => (d.isDirectory() ? d.name + "/" : d.name))
         .join("\n");
     }
+    case "glob": {
+      const re = globToRegExp(input.pattern);
+      const matches = [];
+      for (const abs of walk(ROOT)) {
+        const rel = path.relative(ROOT, abs);
+        if (re.test(rel)) matches.push(rel);
+        if (matches.length >= 500) break;
+      }
+      matches.sort();
+      return matches.length
+        ? matches.join("\n")
+        : "(aucun fichier ne correspond)";
+    }
+    case "grep": {
+      let re;
+      try {
+        re = new RegExp(input.pattern);
+      } catch (e) {
+        throw new Error(`Expression régulière invalide : ${e.message}`);
+      }
+      const globRe = input.glob ? globToRegExp(input.glob) : null;
+      const base = resolveInside(input.path || ".");
+      const out = [];
+      for (const abs of walk(base)) {
+        const rel = path.relative(ROOT, abs);
+        if (globRe && !globRe.test(rel)) continue;
+        let text;
+        try {
+          text = fs.readFileSync(abs, "utf8");
+        } catch {
+          continue; // binaire / illisible
+        }
+        if (text.includes("\u0000")) continue; // saute les fichiers binaires
+        const lines = text.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          if (re.test(lines[i])) {
+            out.push(`${rel}:${i + 1}:${lines[i].trim().slice(0, 200)}`);
+            if (out.length >= 200) break;
+          }
+        }
+        if (out.length >= 200) break;
+      }
+      return out.length ? out.join("\n") : "(aucune correspondance)";
+    }
     default:
       throw new Error(`Outil inconnu : ${name}`);
   }
@@ -212,16 +324,29 @@ async function runTurn(userInput) {
       system: SYSTEM,
       tools,
       messages,
+      ...(THINKING
+        ? { thinking: { type: "adaptive", display: "summarized" } }
+        : {}),
     });
 
-    let printedText = false;
+    let mode = null; // "thinking" | "text"
+    stream.on("thinking", (delta) => {
+      if (mode !== "thinking") {
+        process.stdout.write(c.dim("\n  · réflexion : "));
+        mode = "thinking";
+      }
+      process.stdout.write(c.dim(delta));
+    });
     stream.on("text", (delta) => {
-      printedText = true;
+      if (mode !== "text") {
+        process.stdout.write(mode === "thinking" ? "\n\n" : "");
+        mode = "text";
+      }
       process.stdout.write(delta);
     });
 
     const response = await stream.finalMessage();
-    if (printedText) process.stdout.write("\n");
+    if (mode) process.stdout.write("\n");
 
     messages.push({ role: "assistant", content: response.content });
 

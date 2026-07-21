@@ -54,16 +54,27 @@ Personnalisez les permissions dans `.mini-agent/permissions.json` :
 { "deny": ["bash"], "ask": ["web_fetch"], "allow": ["edit_file"] }
 ```
 
-## Installation
+## Démarrage (le plus simple)
+
+Une seule commande. Elle installe tout, demande votre clé API **une seule fois** (mémorisée), puis lance l'agent.
+
+**Mac / Linux :**
+```bash
+cd agent
+./start.sh
+```
+
+**Windows :** double-cliquez sur `start.bat` (ou lancez-le dans un terminal).
+
+Au premier lancement, collez votre clé Claude (sur <https://console.anthropic.com/settings/keys>, format `sk-ant-...`). Les fois suivantes : juste `./start.sh`.
+
+> Prérequis unique : **Node.js** (≥ 18), à installer depuis <https://nodejs.org> si vous ne l'avez pas.
+
+## Démarrage manuel (alternative)
 
 ```bash
 cd agent
 npm install
-```
-
-## Utilisation
-
-```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 node agent.js
 ```

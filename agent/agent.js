@@ -249,6 +249,42 @@ const clientTools = [
       required: ["prompt"],
     },
   },
+  {
+    name: "apply_patch",
+    description:
+      "Applique un patch touchant plusieurs fichiers en un seul appel. Chaque " +
+      "opération est create (nouveau fichier), update (contenu complet OU liste " +
+      "d'éditions old_str→new_str) ou delete. Tout est validé avant d'écrire.",
+    input_schema: {
+      type: "object",
+      properties: {
+        operations: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["create", "update", "delete"] },
+              path: { type: "string" },
+              content: { type: "string", description: "Contenu (create, ou update complet)." },
+              edits: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    old_str: { type: "string" },
+                    new_str: { type: "string" },
+                  },
+                  required: ["old_str", "new_str"],
+                },
+              },
+            },
+            required: ["type", "path"],
+          },
+        },
+      },
+      required: ["operations"],
+    },
+  },
 ];
 
 // Outils du sous-agent : lecture seule uniquement (pas de bash, écriture, ni task).
@@ -263,9 +299,15 @@ const serverTools = [
 const tools = [...clientTools, ...(WEB ? serverTools : [])];
 
 // Actions modifiant l'état → confirmation demandée (sauf auto-approve).
-const SENSITIVE = new Set(["bash", "write_file", "edit_file", "multi_edit"]);
+const SENSITIVE = new Set(["bash", "write_file", "edit_file", "multi_edit", "apply_patch"]);
 // En mode plan, ces outils sont refusés (l'agent explore mais ne modifie rien).
-const PLAN_BLOCKED = new Set(["bash", "write_file", "edit_file", "multi_edit"]);
+const PLAN_BLOCKED = new Set([
+  "bash",
+  "write_file",
+  "edit_file",
+  "multi_edit",
+  "apply_patch",
+]);
 let planMode = process.argv.includes("--plan");
 function setPlanMode(v) {
   planMode = v;
@@ -361,6 +403,28 @@ function loadMcp() {
 }
 let MCP_SERVERS = loadMcp();
 
+// Auto-compaction : compacte l'historique quand le prompt dépasse un seuil.
+const AUTO_COMPACT = process.env.AGENT_COMPACT !== "0";
+const COMPACT_AT = parseInt(process.env.AGENT_COMPACT_AT || "300000", 10);
+let lastPromptTokens = 0;
+function shouldCompact(tok) {
+  return AUTO_COMPACT && tok > COMPACT_AT;
+}
+
+// Conscience du dépôt git (équivalent de l'intégration éditeur).
+function gitInfo() {
+  try {
+    const opt = { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] };
+    const branch = execSync("git rev-parse --abbrev-ref HEAD", opt).trim();
+    const dirty = execSync("git status --porcelain", opt)
+      .split("\n")
+      .filter(Boolean).length;
+    return `   git:${branch}${dirty ? c.yellow("*" + dirty) : ""}`;
+  } catch {
+    return "";
+  }
+}
+
 // Mentions @fichier : injecte le contenu (ou l'image) des fichiers cités.
 const IMG_EXT = {
   ".png": "image/png",
@@ -450,6 +514,39 @@ function runTool(name, input) {
       });
       fs.writeFileSync(abs, text);
       return `Appliqué ${edits.length} édition(s) à ${input.path}.`;
+    }
+    case "apply_patch": {
+      const ops = Array.isArray(input.operations) ? input.operations : [];
+      if (!ops.length) throw new Error("Aucune opération.");
+      // Validation complète avant toute écriture (atomicité).
+      const plan = ops.map((op, idx) => {
+        const abs = resolveInside(op.path);
+        if (op.type === "create") return { op, abs, text: op.content ?? "" };
+        if (op.type === "delete") {
+          if (!fs.existsSync(abs)) throw new Error(`op ${idx + 1} : ${op.path} introuvable.`);
+          return { op, abs };
+        }
+        if (op.type === "update") {
+          if (op.content != null && !op.edits) return { op, abs, text: op.content };
+          let text = fs.readFileSync(abs, "utf8");
+          (op.edits || []).forEach((e, i) => {
+            const cnt = text.split(e.old_str).length - 1;
+            if (cnt === 0) throw new Error(`op ${idx + 1} édition ${i + 1} : old_str introuvable.`);
+            if (cnt > 1) throw new Error(`op ${idx + 1} édition ${i + 1} : old_str non unique.`);
+            text = text.replace(e.old_str, e.new_str);
+          });
+          return { op, abs, text };
+        }
+        throw new Error(`op ${idx + 1} : type inconnu (${op.type}).`);
+      });
+      for (const p of plan) {
+        if (p.op.type === "delete") fs.rmSync(p.abs, { force: true });
+        else {
+          fs.mkdirSync(path.dirname(p.abs), { recursive: true });
+          fs.writeFileSync(p.abs, p.text);
+        }
+      }
+      return `Patch appliqué : ${ops.length} opération(s) (${ops.map((o) => o.type[0]).join("")}).`;
     }
     case "list_dir": {
       const abs = resolveInside(input.path || ".");
@@ -569,7 +666,7 @@ const SYSTEM = [
     text:
       `Tu es mini-code-agent, un assistant de programmation autonome qui travaille dans ${ROOT}.\n` +
       `Tu disposes d'outils pour exécuter des commandes bash, lire/écrire/éditer des fichiers ` +
-      `(write_file, edit_file, multi_edit), chercher (glob, grep)` +
+      `(write_file, edit_file, multi_edit, apply_patch pour du multi-fichiers), chercher (glob, grep)` +
       `${WEB ? ", chercher sur le web (web_search, web_fetch)" : ""}, déléguer de l'exploration ` +
       `à un sous-agent (task), et suivre des tâches (todo_write).\n` +
       `Accomplis la tâche de bout en bout : explore avant de modifier, fais des changements ciblés, ` +
@@ -644,7 +741,24 @@ function printDiff(name, input) {
   } else if (name === "write_file") {
     const lines = String(input.content).split("\n").length;
     console.log(c.green(`    + ${lines} ligne(s) → ${input.path}`));
+  } else if (name === "apply_patch") {
+    for (const op of input.operations || [])
+      console.log(c.dim(`    ${op.type[0]} ${op.path}`));
   }
+}
+
+// Spinner (uniquement en terminal interactif).
+function startSpinner() {
+  if (!process.stdout.isTTY) return () => {};
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let i = 0;
+  const id = setInterval(() => {
+    process.stdout.write("\r" + c.dim(`  ${frames[i++ % frames.length]} réflexion…`));
+  }, 80);
+  return () => {
+    clearInterval(id);
+    process.stdout.write("\r\x1b[K");
+  };
 }
 
 // ─── Sous-agent (délégation autonome, lecture seule) ────────────────────────
@@ -694,12 +808,19 @@ const messages = [];
 let currentAbort = null;
 
 async function runTurn(userInput) {
+  // Auto-compaction : si le dernier prompt a dépassé le seuil, on résume avant.
+  if (shouldCompact(lastPromptTokens)) {
+    console.log(c.dim("  ⟳ auto-compaction de l'historique…"));
+    await compact();
+    lastPromptTokens = 0;
+  }
   messages.push({ role: "user", content: expandMentions(userInput) });
 
   while (true) {
     const ac = new AbortController();
     currentAbort = ac;
     let response;
+    const stopSpinner = startSpinner();
     try {
       const useBeta = MCP_SERVERS.length > 0;
       const reqTools = [
@@ -732,6 +853,7 @@ async function runTurn(userInput) {
 
       let mode = null;
       stream.on("thinking", (delta) => {
+        stopSpinner();
         if (mode !== "thinking") {
           process.stdout.write(c.dim("\n  · réflexion : "));
           mode = "thinking";
@@ -739,6 +861,7 @@ async function runTurn(userInput) {
         process.stdout.write(c.dim(delta));
       });
       stream.on("text", (delta) => {
+        stopSpinner();
         if (mode !== "text") {
           process.stdout.write(mode === "thinking" ? "\n\n" : "");
           mode = "text";
@@ -747,8 +870,10 @@ async function runTurn(userInput) {
       });
 
       response = await stream.finalMessage();
+      stopSpinner();
       if (mode) process.stdout.write("\n");
     } catch (e) {
+      stopSpinner();
       if (ac.signal.aborted) {
         console.log(c.dim("\n  ⏹ interrompu."));
         return;
@@ -757,6 +882,9 @@ async function runTurn(userInput) {
     } finally {
       currentAbort = null;
     }
+
+    lastPromptTokens =
+      (response.usage?.input_tokens || 0) + (response.usage?.cache_read_input_tokens || 0);
 
     addUsage(response.usage);
     messages.push({ role: "assistant", content: response.content });
@@ -830,6 +958,7 @@ async function runTurn(userInput) {
 
 function summarize(input) {
   if (input.command) return truncate(input.command, 60);
+  if (input.operations) return `${input.operations.length} op(s)`;
   if (input.edits) return `${input.path} (${input.edits.length} édits)`;
   if (input.path) return input.path;
   if (input.pattern) return truncate(input.pattern, 40);
@@ -873,6 +1002,7 @@ function banner() {
   );
   console.log(
     c.dim(`  modèle : ${MODEL}   dossier : ${ROOT}   outils : ${tools.length}`) +
+      c.dim(gitInfo()) +
       (autoApprove ? c.yellow("   [auto-approve]") : "") +
       (planMode ? c.yellow("   [plan]") : "") +
       (PROJECT_CONTEXT ? c.dim("   [CLAUDE.md]") : "") +
@@ -893,6 +1023,8 @@ const HELP = `${c.bold("Commandes :")}
   /permissions   affiche la permission (allow/ask/deny) de chaque outil
   /plan          bascule le mode plan (lecture seule : aucune modification)
   /commands      liste les commandes personnalisées (.mini-agent/commands/*.md)
+  /diff          affiche les modifications git en cours
+  /review        demande à l'agent de relire les changements git
   /init          demande à l'agent de générer un CLAUDE.md
   /exit          quitte
 Tout autre texte est envoyé à l'agent comme une tâche.
@@ -941,6 +1073,18 @@ async function handleCommand(line) {
       c.dim("  mode plan " + (planMode ? "activé (lecture seule)" : "désactivé")),
     );
   }
+  if (line === "/diff") {
+    try {
+      const d = execSync("git diff", { cwd: ROOT, encoding: "utf8" });
+      return void console.log(d.trim() ? d : c.dim("  (aucune modification non indexée)"));
+    } catch {
+      return void console.log(c.dim("  pas un dépôt git"));
+    }
+  }
+  if (line === "/review")
+    return "Exécute `git diff` (et `git diff --staged`) puis fais une revue de code " +
+      "des changements en cours : bugs, régressions, cas limites, tests manquants, " +
+      "style. Sois précis et cite les fichiers/lignes concernés.";
   if (line === "/commands")
     return void console.log(
       c.dim("  " + (Object.keys(COMMANDS).join(", ") || "(aucune commande personnalisée)")),
@@ -1041,4 +1185,6 @@ export {
   matchHook,
   runHooks,
   setPlanMode,
+  shouldCompact,
+  gitInfo,
 };

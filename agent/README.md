@@ -13,7 +13,10 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes, lit/�
 - **Suivi du coût** : compteur de tokens (entrée / sortie / cache) et estimation en dollars, via `/cost`.
 - **Todos** : outil `todo_write` pour planifier et suivre les tâches multi-étapes (comme le TodoWrite de Claude Code).
 - **Sous-agents** : outil `task` qui délègue de l'exploration à un sous-agent autonome en lecture seule ; plusieurs sous-agents s'exécutent **en parallèle**.
-- **Édition multiple** : outil `multi_edit` pour appliquer plusieurs remplacements atomiques dans un même fichier.
+- **Édition multiple** : outil `multi_edit` (plusieurs remplacements dans un fichier) et `apply_patch` (patch **multi-fichiers** create/update/delete, validé avant écriture).
+- **Auto-compaction** : l'historique se résume automatiquement quand le prompt dépasse un seuil (`AGENT_COMPACT_AT`, défaut 300k tokens ; `AGENT_COMPACT=0` pour couper).
+- **Conscience git** : branche et nombre de fichiers modifiés dans la bannière ; `/diff` affiche les changements, `/review` lance une revue de code — l'équivalent d'agir sur votre arbre de travail.
+- **Rendu** : spinner pendant la réflexion, diffs colorés, sorties d'outils indentées.
 - **Permissions par outil** : politique `allow`/`ask`/`deny` par outil, personnalisable via `.mini-agent/permissions.json` ; visible avec `/permissions`.
 - **Mode plan** : `/plan` (ou `--plan`) met l'agent en lecture seule — il explore et propose, sans jamais modifier (bash/write/edit refusés) jusqu'à ce que vous le désactiviez.
 - **Mentions `@fichier`** : citez `@chemin` dans un message pour injecter le contenu du fichier — et `@image.png` pour envoyer une image au modèle (vision).
@@ -27,7 +30,7 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes, lit/�
 - **Diffs** : les éditions et écritures affichent un aperçu des lignes changées.
 - **Garde-fous** : les actions sensibles (`bash`, `write_file`, `edit_file`) demandent confirmation ; tous les accès fichiers sont confinés au répertoire du projet.
 
-## Les 12 outils
+## Les 13 outils
 
 | Outil | Rôle | Exécution | Permission par défaut |
 |-------|------|-----------|-----------------------|
@@ -36,6 +39,7 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes, lit/�
 | `write_file` | Crée ou écrase un fichier | client | ask |
 | `edit_file` | Remplace une portion de texte | client | ask |
 | `multi_edit` | Plusieurs remplacements atomiques dans un fichier | client | ask |
+| `apply_patch` | Patch multi-fichiers (create/update/delete) | client | ask |
 | `list_dir` | Liste un répertoire | client | allow |
 | `glob` | Recherche de fichiers par motif (`**/*.js`) | client | allow |
 | `grep` | Recherche regex dans le contenu (`fichier:ligne:texte`) | client | allow |
@@ -94,6 +98,8 @@ node agent.js --continue -p "continue la tâche"   # reprend la session précéd
 | `/permissions` | Affiche la permission (allow/ask/deny) de chaque outil |
 | `/plan` | Bascule le mode plan (lecture seule) |
 | `/commands` | Liste les commandes personnalisées |
+| `/diff` | Affiche les modifications git en cours |
+| `/review` | Demande à l'agent de relire les changements git |
 | `/init` | Demande à l'agent de générer un `CLAUDE.md` |
 | `/exit` | Quitte |
 
@@ -107,8 +113,11 @@ Dans un message, `@chemin` injecte un fichier (ou une image) : `explique @src/ap
 | `--continue` | Reprend la dernière session (`.mini-agent/session.json`) |
 | `-p "tâche"` | Mode non interactif (implique l'auto-approbation) |
 | `AGENT_MODEL=…` | Modèle (défaut : `claude-opus-4-8`) |
+| `--plan` | Démarre en mode plan (lecture seule) |
 | `AGENT_THINKING=0` | Désactive la pensée adaptative |
 | `AGENT_WEB=0` | Désactive les outils web |
+| `AGENT_COMPACT=0` | Désactive l'auto-compaction |
+| `AGENT_COMPACT_AT=N` | Seuil de tokens avant auto-compaction (défaut 300000) |
 
 ## Configuration (`.mini-agent/`)
 

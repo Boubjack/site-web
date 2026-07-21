@@ -205,7 +205,54 @@ const clientTools = [
       required: ["todos"],
     },
   },
+  {
+    name: "multi_edit",
+    description:
+      "Applique plusieurs remplacements exacts (old_str→new_str) dans un même " +
+      "fichier, de façon atomique et séquentielle. Chaque old_str doit être unique " +
+      "au moment où il est appliqué.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Chemin du fichier." },
+        edits: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              old_str: { type: "string" },
+              new_str: { type: "string" },
+            },
+            required: ["old_str", "new_str"],
+          },
+        },
+      },
+      required: ["path", "edits"],
+    },
+  },
+  {
+    name: "task",
+    description:
+      "Délègue une sous-tâche de recherche/exploration à un sous-agent autonome " +
+      "(outils en lecture seule : read_file, list_dir, glob, grep) et renvoie son " +
+      "rapport. Utile pour explorer le code en parallèle sans encombrer le contexte " +
+      "principal. Donne des instructions complètes et autonomes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        description: { type: "string", description: "Résumé court de la sous-tâche." },
+        prompt: {
+          type: "string",
+          description: "Instructions détaillées et autonomes pour le sous-agent.",
+        },
+      },
+      required: ["prompt"],
+    },
+  },
 ];
+
+// Outils du sous-agent : lecture seule uniquement (pas de bash, écriture, ni task).
+const SUBAGENT_TOOLS = ["read_file", "list_dir", "glob", "grep"];
 
 // Outils serveur (exécutés côté Anthropic, aucune implémentation locale).
 const serverTools = [
@@ -216,7 +263,28 @@ const serverTools = [
 const tools = [...clientTools, ...(WEB ? serverTools : [])];
 
 // Actions modifiant l'état → confirmation demandée (sauf auto-approve).
-const SENSITIVE = new Set(["bash", "write_file", "edit_file"]);
+const SENSITIVE = new Set(["bash", "write_file", "edit_file", "multi_edit"]);
+
+// ─── Permissions par outil (allow / ask / deny) ─────────────────────────────
+// Configurables via .mini-agent/permissions.json : { allow:[], ask:[], deny:[] }
+let PERM = { allow: [], ask: [], deny: [] };
+function loadPermissions() {
+  try {
+    const p = JSON.parse(
+      fs.readFileSync(path.join(ROOT, ".mini-agent", "permissions.json"), "utf8"),
+    );
+    PERM = { allow: p.allow || [], ask: p.ask || [], deny: p.deny || [] };
+  } catch {
+    /* défauts */
+  }
+}
+function permissionFor(name) {
+  if (PERM.deny.includes(name)) return "deny";
+  if (PERM.allow.includes(name)) return "allow";
+  if (PERM.ask.includes(name)) return "ask";
+  return SENSITIVE.has(name) ? "ask" : "allow";
+}
+loadPermissions();
 
 // ─── Exécution des outils clients ───────────────────────────────────────────
 
@@ -257,6 +325,22 @@ function runTool(name, input) {
         throw new Error(`old_str apparaît ${count} fois (doit être unique).`);
       fs.writeFileSync(abs, orig.replace(input.old_str, input.new_str));
       return `Modifié ${input.path}.`;
+    }
+    case "multi_edit": {
+      const abs = resolveInside(input.path);
+      let text = fs.readFileSync(abs, "utf8");
+      const edits = Array.isArray(input.edits) ? input.edits : [];
+      if (!edits.length) throw new Error("Aucune édition fournie.");
+      edits.forEach((e, i) => {
+        const count = text.split(e.old_str).length - 1;
+        if (count === 0)
+          throw new Error(`Édition ${i + 1} : old_str introuvable.`);
+        if (count > 1)
+          throw new Error(`Édition ${i + 1} : old_str apparaît ${count} fois.`);
+        text = text.replace(e.old_str, e.new_str);
+      });
+      fs.writeFileSync(abs, text);
+      return `Appliqué ${edits.length} édition(s) à ${input.path}.`;
     }
     case "list_dir": {
       const abs = resolveInside(input.path || ".");
@@ -375,9 +459,10 @@ const SYSTEM = [
     type: "text",
     text:
       `Tu es mini-code-agent, un assistant de programmation autonome qui travaille dans ${ROOT}.\n` +
-      `Tu disposes d'outils pour exécuter des commandes bash, lire/écrire/éditer des fichiers, ` +
-      `chercher (glob, grep)${WEB ? ", chercher sur le web (web_search, web_fetch)" : ""}, ` +
-      `et suivre des tâches (todo_write).\n` +
+      `Tu disposes d'outils pour exécuter des commandes bash, lire/écrire/éditer des fichiers ` +
+      `(write_file, edit_file, multi_edit), chercher (glob, grep)` +
+      `${WEB ? ", chercher sur le web (web_search, web_fetch)" : ""}, déléguer de l'exploration ` +
+      `à un sous-agent (task), et suivre des tâches (todo_write).\n` +
       `Accomplis la tâche de bout en bout : explore avant de modifier, fais des changements ciblés, ` +
       `et vérifie ton travail (tests, lint, build) quand c'est pertinent. Pour toute tâche à ` +
       `plusieurs étapes, planifie-la avec todo_write et tiens la liste à jour.\n` +
@@ -422,9 +507,16 @@ const ask = (q) =>
   new Promise((res) => (rl ? rl.question(q, res) : res("")));
 
 async function confirm(name, input) {
-  if (autoApprove || !SENSITIVE.has(name)) return true;
+  const perm = permissionFor(name);
+  if (perm === "deny") {
+    console.log(c.red(`  ⛔ ${name} refusé par la politique de permissions`));
+    return false;
+  }
+  if (perm === "allow" || autoApprove) return true;
   const preview =
-    name === "bash" ? input.command : input.path + (name === "edit_file" ? " (edit)" : "");
+    name === "bash"
+      ? input.command
+      : (input.path || "") + (name === "edit_file" || name === "multi_edit" ? " (edit)" : "");
   const a = (await ask(c.yellow(`  ⚠  ${name}: ${truncate(preview, 70)}  [O/n] `)))
     .trim()
     .toLowerCase();
@@ -437,10 +529,54 @@ function printDiff(name, input) {
     const add = String(input.new_str).split("\n").slice(0, 6);
     for (const l of del) console.log(c.red("    - " + truncate(l, 80)));
     for (const l of add) console.log(c.green("    + " + truncate(l, 80)));
+  } else if (name === "multi_edit") {
+    const n = Array.isArray(input.edits) ? input.edits.length : 0;
+    console.log(c.green(`    ~ ${n} édition(s) → ${input.path}`));
   } else if (name === "write_file") {
     const lines = String(input.content).split("\n").length;
     console.log(c.green(`    + ${lines} ligne(s) → ${input.path}`));
   }
+}
+
+// ─── Sous-agent (délégation autonome, lecture seule) ────────────────────────
+
+async function runTask(input) {
+  const subTools = clientTools.filter((t) => SUBAGENT_TOOLS.includes(t.name));
+  const subMessages = [{ role: "user", content: input.prompt }];
+  const subSystem =
+    "Tu es un sous-agent de recherche autonome. Tu explores le code en lecture " +
+    "seule (read_file, list_dir, glob, grep) et tu renvoies un rapport clair et " +
+    "concis répondant précisément à la demande. Tu ne peux rien modifier.";
+  for (let i = 0; i < 12; i++) {
+    const r = await getClient().messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system: subSystem,
+      tools: subTools,
+      messages: subMessages,
+    });
+    addUsage(r.usage);
+    subMessages.push({ role: "assistant", content: r.content });
+    if (r.stop_reason !== "tool_use") {
+      return (
+        r.content
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("\n") || "(le sous-agent n'a rien renvoyé)"
+      );
+    }
+    const results = [];
+    for (const b of r.content) {
+      if (b.type !== "tool_use") continue;
+      try {
+        results.push({ type: "tool_result", tool_use_id: b.id, content: runTool(b.name, b.input) });
+      } catch (e) {
+        results.push({ type: "tool_result", tool_use_id: b.id, content: e.message, is_error: true });
+      }
+    }
+    subMessages.push({ role: "user", content: results });
+  }
+  return "(sous-agent : limite d'itérations atteinte)";
 }
 
 // ─── Boucle agentique ───────────────────────────────────────────────────────
@@ -504,38 +640,47 @@ async function runTurn(userInput) {
     if (response.stop_reason === "pause_turn") continue;
     if (response.stop_reason !== "tool_use") break;
 
-    const toolResults = [];
-    for (const block of response.content) {
-      if (block.type !== "tool_use") continue; // ignore les blocs d'outils serveur
+    const blocks = response.content.filter((b) => b.type === "tool_use");
 
-      const approved = await confirm(block.name, block.input);
-      if (!approved) {
-        console.log(c.dim("  ↳ refusé par l'utilisateur"));
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: "L'utilisateur a refusé l'exécution de cet outil.",
-          is_error: true,
-        });
-        continue;
-      }
-
-      console.log(c.dim(`  ↳ ${block.name}(${summarize(block.input)})`));
-      try {
-        const result = runTool(block.name, block.input);
-        printDiff(block.name, block.input);
-        if (block.name === "todo_write") console.log(c.dim(indent(renderTodos())));
-        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
-      } catch (e) {
-        console.log(c.red(`    ✗ ${e.message.split("\n")[0]}`));
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: e.message,
-          is_error: true,
-        });
-      }
+    // Passe 1 — confirmations (séquentielles, car interactives).
+    const decisions = [];
+    for (const block of blocks) {
+      decisions.push({ block, approved: await confirm(block.name, block.input) });
     }
+
+    // Passe 2 — exécution (en parallèle : les sous-agents et outils s'exécutent
+    // concurremment, l'ordre des résultats est préservé).
+    const toolResults = await Promise.all(
+      decisions.map(async ({ block, approved }) => {
+        if (!approved) {
+          console.log(c.dim(`  ↳ ${block.name} refusé`));
+          return {
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: "Refusé (utilisateur ou politique de permissions).",
+            is_error: true,
+          };
+        }
+        console.log(c.dim(`  ↳ ${block.name}(${summarize(block.input)})`));
+        try {
+          const result =
+            block.name === "task"
+              ? await runTask(block.input)
+              : runTool(block.name, block.input);
+          printDiff(block.name, block.input);
+          if (block.name === "todo_write") console.log(c.dim(indent(renderTodos())));
+          return { type: "tool_result", tool_use_id: block.id, content: result };
+        } catch (e) {
+          console.log(c.red(`    ✗ ${e.message.split("\n")[0]}`));
+          return {
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: e.message,
+            is_error: true,
+          };
+        }
+      }),
+    );
 
     messages.push({ role: "user", content: toolResults });
     saveSession();
@@ -544,9 +689,11 @@ async function runTurn(userInput) {
 
 function summarize(input) {
   if (input.command) return truncate(input.command, 60);
+  if (input.edits) return `${input.path} (${input.edits.length} édits)`;
   if (input.path) return input.path;
   if (input.pattern) return truncate(input.pattern, 40);
   if (input.todos) return `${input.todos.length} tâche(s)`;
+  if (input.prompt) return truncate(input.description || input.prompt, 50);
   return "";
 }
 const indent = (s) => s.split("\n").map((l) => "    " + l).join("\n");
@@ -599,6 +746,7 @@ const HELP = `${c.bold("Commandes :")}
   /todos         affiche la liste de tâches
   /model <id>    change de modèle (relance requise pour l'effet complet)
   /tools         liste les outils disponibles
+  /permissions   affiche la permission (allow/ask/deny) de chaque outil
   /init          demande à l'agent de générer un CLAUDE.md
   /exit          quitte
 Tout autre texte est envoyé à l'agent comme une tâche.
@@ -625,6 +773,16 @@ async function handleCommand(line) {
   if (line === "/todos") return void console.log(c.dim(indent(renderTodos())));
   if (line === "/tools")
     return void console.log(c.dim("  " + tools.map((t) => t.name).join(", ")));
+  if (line === "/permissions") {
+    return void console.log(
+      c.dim(
+        "  " +
+          tools
+            .map((t) => `${t.name}:${permissionFor(t.name)}`)
+            .join("  "),
+      ),
+    );
+  }
   if (line.startsWith("/model ")) {
     console.log(c.dim("  Relancez avec AGENT_MODEL=" + line.slice(7).trim()));
     return;
@@ -704,4 +862,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-export { runTool, tools, resolveInside, globToRegExp, renderTodos, estimateCost, loadProjectContext };
+export {
+  runTool,
+  tools,
+  resolveInside,
+  globToRegExp,
+  renderTodos,
+  estimateCost,
+  loadProjectContext,
+  permissionFor,
+  SUBAGENT_TOOLS,
+};

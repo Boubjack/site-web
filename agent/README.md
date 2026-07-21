@@ -12,6 +12,9 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes, lit/�
 - **Cache de prompt** : le prompt système et les outils sont mis en cache (`cache_control`) pour réduire le coût des tours suivants.
 - **Suivi du coût** : compteur de tokens (entrée / sortie / cache) et estimation en dollars, via `/cost`.
 - **Todos** : outil `todo_write` pour planifier et suivre les tâches multi-étapes (comme le TodoWrite de Claude Code).
+- **Sous-agents** : outil `task` qui délègue de l'exploration à un sous-agent autonome en lecture seule ; plusieurs sous-agents s'exécutent **en parallèle**.
+- **Édition multiple** : outil `multi_edit` pour appliquer plusieurs remplacements atomiques dans un même fichier.
+- **Permissions par outil** : politique `allow`/`ask`/`deny` par outil, personnalisable via `.mini-agent/permissions.json` ; visible avec `/permissions`.
 - **Recherche web** : outils serveur `web_search` et `web_fetch` (`AGENT_WEB=0` pour couper).
 - **Persistance de session** : chaque tour est sauvegardé ; `--continue` reprend la dernière session.
 - **Mode non interactif** : `-p "tâche"` ou entrée redirigée (`echo "…" | agent`), pour scripts et CI.
@@ -19,20 +22,28 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes, lit/�
 - **Diffs** : les éditions et écritures affichent un aperçu des lignes changées.
 - **Garde-fous** : les actions sensibles (`bash`, `write_file`, `edit_file`) demandent confirmation ; tous les accès fichiers sont confinés au répertoire du projet.
 
-## Les 10 outils
+## Les 12 outils
 
-| Outil | Rôle | Exécution |
-|-------|------|-----------|
-| `bash` | Exécute une commande shell | client |
-| `read_file` | Lit un fichier | client |
-| `write_file` | Crée ou écrase un fichier | client |
-| `edit_file` | Remplace une portion de texte | client |
-| `list_dir` | Liste un répertoire | client |
-| `glob` | Recherche de fichiers par motif (`**/*.js`) | client |
-| `grep` | Recherche regex dans le contenu (`fichier:ligne:texte`) | client |
-| `todo_write` | Gère la liste de tâches | client |
-| `web_search` | Recherche sur le web | serveur (Anthropic) |
-| `web_fetch` | Récupère le contenu d'une URL | serveur (Anthropic) |
+| Outil | Rôle | Exécution | Permission par défaut |
+|-------|------|-----------|-----------------------|
+| `bash` | Exécute une commande shell | client | ask |
+| `read_file` | Lit un fichier | client | allow |
+| `write_file` | Crée ou écrase un fichier | client | ask |
+| `edit_file` | Remplace une portion de texte | client | ask |
+| `multi_edit` | Plusieurs remplacements atomiques dans un fichier | client | ask |
+| `list_dir` | Liste un répertoire | client | allow |
+| `glob` | Recherche de fichiers par motif (`**/*.js`) | client | allow |
+| `grep` | Recherche regex dans le contenu (`fichier:ligne:texte`) | client | allow |
+| `todo_write` | Gère la liste de tâches | client | allow |
+| `task` | Délègue de l'exploration à un sous-agent (lecture seule, parallèle) | client | allow |
+| `web_search` | Recherche sur le web | serveur (Anthropic) | allow |
+| `web_fetch` | Récupère le contenu d'une URL | serveur (Anthropic) | allow |
+
+Personnalisez les permissions dans `.mini-agent/permissions.json` :
+
+```json
+{ "deny": ["bash"], "ask": ["web_fetch"], "allow": ["edit_file"] }
+```
 
 ## Installation
 
@@ -75,6 +86,7 @@ node agent.js --continue -p "continue la tâche"   # reprend la session précéd
 | `/todos` | Affiche la liste de tâches |
 | `/model <id>` | Indique comment changer de modèle |
 | `/tools` | Liste les outils |
+| `/permissions` | Affiche la permission (allow/ask/deny) de chaque outil |
 | `/init` | Demande à l'agent de générer un `CLAUDE.md` |
 | `/exit` | Quitte |
 

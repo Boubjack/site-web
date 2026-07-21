@@ -15,6 +15,11 @@ Il ne se contente pas de discuter : il **raisonne, exécute des commandes, lit/�
 - **Sous-agents** : outil `task` qui délègue de l'exploration à un sous-agent autonome en lecture seule ; plusieurs sous-agents s'exécutent **en parallèle**.
 - **Édition multiple** : outil `multi_edit` pour appliquer plusieurs remplacements atomiques dans un même fichier.
 - **Permissions par outil** : politique `allow`/`ask`/`deny` par outil, personnalisable via `.mini-agent/permissions.json` ; visible avec `/permissions`.
+- **Mode plan** : `/plan` (ou `--plan`) met l'agent en lecture seule — il explore et propose, sans jamais modifier (bash/write/edit refusés) jusqu'à ce que vous le désactiviez.
+- **Mentions `@fichier`** : citez `@chemin` dans un message pour injecter le contenu du fichier — et `@image.png` pour envoyer une image au modèle (vision).
+- **Commandes slash personnalisées** : déposez `.mini-agent/commands/<nom>.md` (avec `$ARGUMENTS`) et invoquez `/nom …`.
+- **Hooks** : `.mini-agent/hooks.json` déclenche des commandes sur `PreToolUse` / `PostToolUse` / `Stop` ; un hook `PreToolUse` en échec **bloque** l'outil.
+- **MCP** : connectez des serveurs MCP via `.mini-agent/mcp.json` (Claude s'y connecte côté serveur).
 - **Recherche web** : outils serveur `web_search` et `web_fetch` (`AGENT_WEB=0` pour couper).
 - **Persistance de session** : chaque tour est sauvegardé ; `--continue` reprend la dernière session.
 - **Mode non interactif** : `-p "tâche"` ou entrée redirigée (`echo "…" | agent`), pour scripts et CI.
@@ -87,8 +92,12 @@ node agent.js --continue -p "continue la tâche"   # reprend la session précéd
 | `/model <id>` | Indique comment changer de modèle |
 | `/tools` | Liste les outils |
 | `/permissions` | Affiche la permission (allow/ask/deny) de chaque outil |
+| `/plan` | Bascule le mode plan (lecture seule) |
+| `/commands` | Liste les commandes personnalisées |
 | `/init` | Demande à l'agent de générer un `CLAUDE.md` |
 | `/exit` | Quitte |
+
+Dans un message, `@chemin` injecte un fichier (ou une image) : `explique @src/app.js`, `que vois-tu sur @capture.png ?`.
 
 ### Options
 
@@ -100,6 +109,20 @@ node agent.js --continue -p "continue la tâche"   # reprend la session précéd
 | `AGENT_MODEL=…` | Modèle (défaut : `claude-opus-4-8`) |
 | `AGENT_THINKING=0` | Désactive la pensée adaptative |
 | `AGENT_WEB=0` | Désactive les outils web |
+
+## Configuration (`.mini-agent/`)
+
+Tout est optionnel ; ce dossier n'est pas versionné.
+
+| Fichier | Rôle |
+|---------|------|
+| `session.json` | Session courante (auto ; reprise via `--continue`) |
+| `permissions.json` | `{ "deny":[…], "ask":[…], "allow":[…] }` par nom d'outil |
+| `commands/<nom>.md` | Commande slash personnalisée (`$ARGUMENTS` remplacé par les arguments) |
+| `hooks.json` | `{ "PreToolUse":[{"matcher":"bash","command":"…"}], "PostToolUse":[…], "Stop":[…] }` |
+| `mcp.json` | `{ "servers":[{ "name":"…","url":"…","authorization_token":"…" }] }` |
+
+Les hooks reçoivent `TOOL_NAME` et `TOOL_INPUT` (JSON) en variables d'environnement. Un `PreToolUse` qui sort en erreur bloque l'appel de l'outil.
 
 ## Comment ça marche
 

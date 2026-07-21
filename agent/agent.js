@@ -264,6 +264,12 @@ const tools = [...clientTools, ...(WEB ? serverTools : [])];
 
 // Actions modifiant l'état → confirmation demandée (sauf auto-approve).
 const SENSITIVE = new Set(["bash", "write_file", "edit_file", "multi_edit"]);
+// En mode plan, ces outils sont refusés (l'agent explore mais ne modifie rien).
+const PLAN_BLOCKED = new Set(["bash", "write_file", "edit_file", "multi_edit"]);
+let planMode = process.argv.includes("--plan");
+function setPlanMode(v) {
+  planMode = v;
+}
 
 // ─── Permissions par outil (allow / ask / deny) ─────────────────────────────
 // Configurables via .mini-agent/permissions.json : { allow:[], ask:[], deny:[] }
@@ -279,12 +285,115 @@ function loadPermissions() {
   }
 }
 function permissionFor(name) {
+  if (planMode && PLAN_BLOCKED.has(name)) return "deny";
   if (PERM.deny.includes(name)) return "deny";
   if (PERM.allow.includes(name)) return "allow";
   if (PERM.ask.includes(name)) return "ask";
   return SENSITIVE.has(name) ? "ask" : "allow";
 }
 loadPermissions();
+
+// ─── Configuration avancée : commandes, hooks, MCP, mentions @fichier ───────
+
+const CONF_DIR = path.join(ROOT, ".mini-agent");
+
+// Commandes personnalisées : .mini-agent/commands/<nom>.md ($ARGUMENTS remplacé).
+function loadCommands(dir = path.join(CONF_DIR, "commands")) {
+  const map = {};
+  try {
+    for (const f of fs.readdirSync(dir))
+      if (f.endsWith(".md"))
+        map[f.slice(0, -3)] = fs.readFileSync(path.join(dir, f), "utf8");
+  } catch {
+    /* aucun */
+  }
+  return map;
+}
+let COMMANDS = loadCommands();
+
+// Hooks : .mini-agent/hooks.json { PreToolUse:[{matcher,command}], PostToolUse, Stop }
+function loadHooks() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(CONF_DIR, "hooks.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+let HOOKS = loadHooks();
+function matchHook(matcher, name) {
+  if (!matcher || matcher === "*") return true;
+  try {
+    return new RegExp("^" + matcher + "$").test(name);
+  } catch {
+    return matcher === name;
+  }
+}
+// Exécute les hooks d'un évènement. Sur PreToolUse, un hook en échec bloque l'outil.
+function runHooks(event, name, input) {
+  for (const h of HOOKS[event] || []) {
+    if (!matchHook(h.matcher, name)) continue;
+    try {
+      const out = execSync(h.command, {
+        cwd: ROOT,
+        encoding: "utf8",
+        timeout: 30000,
+        env: { ...process.env, TOOL_NAME: name || "", TOOL_INPUT: JSON.stringify(input || {}) },
+      });
+      if (out.trim()) console.log(c.dim("  ⓗ " + out.trim().split("\n")[0]));
+    } catch (e) {
+      const msg = (e.stdout?.toString() || "") + (e.stderr?.toString() || "");
+      if (event === "PreToolUse")
+        return { blocked: true, message: msg.trim() || "hook a bloqué l'outil" };
+      console.log(c.dim(`  ⓗ hook ${event} en échec`));
+    }
+  }
+  return { blocked: false };
+}
+
+// MCP : .mini-agent/mcp.json { servers:[{name,url,authorization_token?}] }
+function loadMcp() {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(CONF_DIR, "mcp.json"), "utf8"));
+    return Array.isArray(j.servers) ? j.servers : [];
+  } catch {
+    return [];
+  }
+}
+let MCP_SERVERS = loadMcp();
+
+// Mentions @fichier : injecte le contenu (ou l'image) des fichiers cités.
+const IMG_EXT = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+function expandMentions(input) {
+  const mentions = [...input.matchAll(/@([^\s]+)/g)].map((m) => m[1]);
+  if (!mentions.length) return input;
+  const blocks = [{ type: "text", text: input }];
+  for (const rel of mentions) {
+    let abs;
+    try {
+      abs = resolveInside(rel);
+    } catch {
+      continue;
+    }
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) continue;
+    const ext = path.extname(rel).toLowerCase();
+    if (IMG_EXT[ext]) {
+      blocks.push({
+        type: "image",
+        source: { type: "base64", media_type: IMG_EXT[ext], data: fs.readFileSync(abs).toString("base64") },
+      });
+    } else {
+      const txt = fs.readFileSync(abs, "utf8").slice(0, 20000);
+      blocks.push({ type: "text", text: `\n\nContenu de ${rel} :\n\`\`\`\n${txt}\n\`\`\`` });
+    }
+  }
+  return blocks.length > 1 ? blocks : input;
+}
 
 // ─── Exécution des outils clients ───────────────────────────────────────────
 
@@ -585,21 +694,38 @@ const messages = [];
 let currentAbort = null;
 
 async function runTurn(userInput) {
-  messages.push({ role: "user", content: userInput });
+  messages.push({ role: "user", content: expandMentions(userInput) });
 
   while (true) {
     const ac = new AbortController();
     currentAbort = ac;
     let response;
     try {
-      const stream = getClient().messages.stream(
+      const useBeta = MCP_SERVERS.length > 0;
+      const reqTools = [
+        ...tools,
+        ...MCP_SERVERS.map((s) => ({ type: "mcp_toolset", mcp_server_name: s.name })),
+      ];
+      const api = useBeta ? getClient().beta.messages : getClient().messages;
+      const stream = api.stream(
         {
           model: MODEL,
           max_tokens: MAX_TOKENS,
           system: SYSTEM,
-          tools,
+          tools: reqTools,
           messages,
           ...(THINKING ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
+          ...(useBeta
+            ? {
+                mcp_servers: MCP_SERVERS.map(({ name, url, authorization_token }) => ({
+                  type: "url",
+                  name,
+                  url,
+                  ...(authorization_token ? { authorization_token } : {}),
+                })),
+                betas: ["mcp-client-2025-11-20"],
+              }
+            : {}),
         },
         { signal: ac.signal },
       );
@@ -638,7 +764,10 @@ async function runTurn(userInput) {
 
     // pause_turn : un outil serveur a atteint sa limite d'itérations → on relance.
     if (response.stop_reason === "pause_turn") continue;
-    if (response.stop_reason !== "tool_use") break;
+    if (response.stop_reason !== "tool_use") {
+      runHooks("Stop");
+      break;
+    }
 
     const blocks = response.content.filter((b) => b.type === "tool_use");
 
@@ -661,6 +790,17 @@ async function runTurn(userInput) {
             is_error: true,
           };
         }
+        // Hook PreToolUse : un hook en échec bloque l'outil.
+        const pre = runHooks("PreToolUse", block.name, block.input);
+        if (pre.blocked) {
+          console.log(c.dim(`  ↳ ${block.name} bloqué par un hook`));
+          return {
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: "Bloqué par un hook PreToolUse : " + pre.message,
+            is_error: true,
+          };
+        }
         console.log(c.dim(`  ↳ ${block.name}(${summarize(block.input)})`));
         try {
           const result =
@@ -669,6 +809,7 @@ async function runTurn(userInput) {
               : runTool(block.name, block.input);
           printDiff(block.name, block.input);
           if (block.name === "todo_write") console.log(c.dim(indent(renderTodos())));
+          runHooks("PostToolUse", block.name, block.input);
           return { type: "tool_result", tool_use_id: block.id, content: result };
         } catch (e) {
           console.log(c.red(`    ✗ ${e.message.split("\n")[0]}`));
@@ -733,7 +874,10 @@ function banner() {
   console.log(
     c.dim(`  modèle : ${MODEL}   dossier : ${ROOT}   outils : ${tools.length}`) +
       (autoApprove ? c.yellow("   [auto-approve]") : "") +
-      (PROJECT_CONTEXT ? c.dim("   [CLAUDE.md]") : ""),
+      (planMode ? c.yellow("   [plan]") : "") +
+      (PROJECT_CONTEXT ? c.dim("   [CLAUDE.md]") : "") +
+      (MCP_SERVERS.length ? c.dim(`   [MCP:${MCP_SERVERS.length}]`) : "") +
+      (Object.keys(COMMANDS).length ? c.dim(`   [cmds:${Object.keys(COMMANDS).length}]`) : ""),
   );
   console.log(c.dim("  /help pour les commandes — ou décrivez une tâche.\n"));
 }
@@ -747,13 +891,17 @@ const HELP = `${c.bold("Commandes :")}
   /model <id>    change de modèle (relance requise pour l'effet complet)
   /tools         liste les outils disponibles
   /permissions   affiche la permission (allow/ask/deny) de chaque outil
+  /plan          bascule le mode plan (lecture seule : aucune modification)
+  /commands      liste les commandes personnalisées (.mini-agent/commands/*.md)
   /init          demande à l'agent de générer un CLAUDE.md
   /exit          quitte
 Tout autre texte est envoyé à l'agent comme une tâche.
+Astuce : citez un fichier avec @chemin (ex. @src/app.js, @capture.png) pour
+l'injecter dans le message.
 
 ${c.bold("Options CLI :")} --yes (auto-approuve), --continue (reprend la session),
-  -p "tâche" (mode non interactif). Env : AGENT_MODEL, AGENT_THINKING=0,
-  AGENT_WEB=0, AUTO_APPROVE=1.
+  --plan (démarre en lecture seule), -p "tâche" (mode non interactif).
+  Env : AGENT_MODEL, AGENT_THINKING=0, AGENT_WEB=0, AUTO_APPROVE=1.
 
 ${c.bold("Astuce :")} Ctrl+C interrompt la réponse en cours ; au repos, il quitte.`;
 
@@ -787,9 +935,25 @@ async function handleCommand(line) {
     console.log(c.dim("  Relancez avec AGENT_MODEL=" + line.slice(7).trim()));
     return;
   }
+  if (line === "/plan") {
+    planMode = !planMode;
+    return void console.log(
+      c.dim("  mode plan " + (planMode ? "activé (lecture seule)" : "désactivé")),
+    );
+  }
+  if (line === "/commands")
+    return void console.log(
+      c.dim("  " + (Object.keys(COMMANDS).join(", ") || "(aucune commande personnalisée)")),
+    );
   if (line === "/init")
     return "Analyse ce dépôt (structure, langages, commandes de build/test/lint, " +
       "conventions) et écris un fichier CLAUDE.md concis pour de futurs agents.";
+  // Commande personnalisée : .mini-agent/commands/<nom>.md ($ARGUMENTS remplacé).
+  const cmdName = line.slice(1).split(/\s+/)[0];
+  if (COMMANDS[cmdName]) {
+    const args = line.slice(1 + cmdName.length).trim();
+    return COMMANDS[cmdName].replace(/\$ARGUMENTS/g, args);
+  }
   return null; // pas une commande
 }
 
@@ -872,4 +1036,9 @@ export {
   loadProjectContext,
   permissionFor,
   SUBAGENT_TOOLS,
+  expandMentions,
+  loadCommands,
+  matchHook,
+  runHooks,
+  setPlanMode,
 };

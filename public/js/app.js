@@ -93,17 +93,27 @@
       }[c]));
     },
 
-    toast(message) {
-      let el = document.querySelector('.toast');
-      if (!el) {
-        el = document.createElement('div');
-        el.className = 'toast';
-        document.body.appendChild(el);
+    /** Toast empilé façon Sonner. type: 'info' | 'success' | 'error'. */
+    toast(message, type = 'info') {
+      let host = document.querySelector('.toaster');
+      if (!host) {
+        host = document.createElement('div');
+        host.className = 'toaster';
+        document.body.appendChild(host);
       }
+      const el = document.createElement('div');
+      el.className = `toast${type && type !== 'info' ? ' ' + type : ''}`;
       el.textContent = message;
-      el.classList.add('show');
-      clearTimeout(el._t);
-      el._t = setTimeout(() => el.classList.remove('show'), 3200);
+      host.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      const dismiss = () => {
+        el.classList.remove('show');
+        el.classList.add('hide');
+        el.addEventListener('transitionend', () => el.remove(), { once: true });
+        setTimeout(() => el.remove(), 500);
+      };
+      el.addEventListener('click', dismiss);
+      setTimeout(dismiss, 3600);
     },
 
     track(type, payload = {}) {

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Market — Espace vendeur</title>
+  <link rel="stylesheet" href="/css/emarket.css" />
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="/">E-<span>Market</span></a>
+    <span class="ai-tag">✨ Espace vendeur · E-Market AI</span>
+    <div class="links" id="nav-links"></div>
+  </nav>
+
+  <main class="dash">
+    <div id="gate" class="panel glass" style="display:none;text-align:center;margin-bottom:20px">
+      <h3>Espace réservé aux vendeurs</h3>
+      <p class="sub">Connectez-vous avec un compte vendeur (démo : vendeur@emarket.ml / vendeur123) depuis la <a href="/" style="color:var(--orange)">page d'accueil</a>.</p>
+    </div>
+
+    <div class="dash-grid" id="tools" style="display:none">
+
+      <!-- 4. Générer une annonce IA -->
+      <section class="panel glass">
+        <h3>📝 Générer une annonce IA</h3>
+        <p class="sub">Donnez un nom simple et quelques infos — l'IA rédige la fiche complète (titre, descriptions, SEO, prix conseillé).</p>
+        <div class="field"><label>Nom du produit</label><input id="l-name" placeholder="Ex : chemise en wax faite main" /></div>
+        <div class="field"><label>Informations (matière, taille, état…)</label><textarea id="l-hints" rows="2" placeholder="Ex : coton wax, tailles M à XL, cousue à Bamako"></textarea></div>
+        <button class="btn btn-orange" id="l-gen">✨ Générer l'annonce</button>
+        <button class="btn btn-ghost btn-sm" id="l-pub" style="display:none;margin-left:8px">Publier sur E-Market</button>
+        <pre id="l-out" style="display:none"></pre>
+      </section>
+
+      <!-- 6. Studio photo IA -->
+      <section class="panel glass">
+        <h3>📸 Studio photo IA</h3>
+        <p class="sub">Améliorez vos photos produit : fond, lumière, netteté, styles professionnels.</p>
+        <div class="field"><label>Nom du produit photographié</label><input id="ph-name" placeholder="Ex : babouches en cuir" /></div>
+        <div class="field"><label>Opérations</label>
+          <select id="ph-ops" multiple size="5">
+            <option value="remove-background" selected>Suppression du fond</option>
+            <option value="enhance-quality" selected>Amélioration qualité</option>
+            <option value="fix-lighting">Correction lumière</option>
+            <option value="sharpen">Netteté</option>
+            <option value="pro-background">Fond professionnel</option>
+          </select>
+        </div>
+        <div class="field"><label>Style de fond</label>
+          <select id="ph-style">
+            <option value="">— aucun —</option>
+            <option value="ecommerce-blanc">E-commerce blanc</option>
+            <option value="luxe-premium">Luxe premium</option>
+            <option value="lifestyle">Lifestyle</option>
+          </select>
+        </div>
+        <button class="btn btn-orange" id="ph-run">✨ Lancer la retouche</button>
+        <pre id="ph-out" style="display:none"></pre>
+      </section>
+
+      <!-- 7. Créer une publicité IA (vidéo) -->
+      <section class="panel glass">
+        <h3>🎬 Créer une publicité IA</h3>
+        <p class="sub">Vidéo marketing générée à partir de vos produits : zoom, rotation, textes animés, musique.</p>
+        <div class="field"><label>Produit</label><select id="v-product"></select></div>
+        <div class="field"><label>Format</label>
+          <select id="v-format">
+            <option value="tiktok">Publicité TikTok (9:16)</option>
+            <option value="instagram">Publicité Instagram (9:16)</option>
+            <option value="catalogue">Vidéo catalogue (16:9)</option>
+          </select>
+        </div>
+        <div class="field"><label>Brief (optionnel)</label><input id="v-brief" placeholder="Ex : insister sur la broderie main" /></div>
+        <button class="btn btn-orange" id="v-run">✨ Générer le storyboard</button>
+        <pre id="v-out" style="display:none"></pre>
+      </section>
+
+      <!-- 8. Assistant marketing -->
+      <section class="panel glass">
+        <h3>📣 Assistant marketing IA</h3>
+        <p class="sub">Slogan, texte pub, post réseaux sociaux, hashtags, script vidéo et voix-off.</p>
+        <div class="field"><label>Produit</label><select id="m-product"></select></div>
+        <div class="field"><label>Campagne</label>
+          <select id="m-campaign">
+            <option value="standard">Standard</option>
+            <option value="ramadan">Ramadan</option>
+            <option value="tabaski">Tabaski</option>
+            <option value="black-friday">Black Friday</option>
+            <option value="saison">Promotion saisonnière</option>
+          </select>
+        </div>
+        <button class="btn btn-orange" id="m-run">✨ Générer le kit pub</button>
+        <pre id="m-out" style="display:none"></pre>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/chat.js"></script>
+  <script>
+    const user = EM.user();
+    const links = document.getElementById('nav-links');
+    if (user) {
+      links.innerHTML = `<a href="/">Boutique</a><span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span><a href="#" id="lo">Déconnexion</a>`;
+      links.querySelector('#lo').onclick = (e) => { e.preventDefault(); EM.logout(); };
+    } else {
+      links.innerHTML = '<a href="/">Boutique</a>';
+    }
+
+    if (!user || (user.role !== 'seller' && user.role !== 'admin')) {
+      document.getElementById('gate').style.display = 'block';
+    } else {
+      document.getElementById('tools').style.display = 'grid';
+      init();
+    }
+
+    function show(id, data) {
+      const el = document.getElementById(id);
+      el.style.display = 'block';
+      el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function run(btn, fn) {
+      const original = btn.textContent;
+      btn.disabled = true; btn.textContent = '✨ E-Market AI travaille…';
+      try { await fn(); } catch (err) { EM.toast(err.message); }
+      btn.disabled = false; btn.textContent = original;
+    }
+
+    let lastListing = null;
+
+    async function init() {
+      // Sélecteurs de produits du vendeur (ou tous pour l'admin).
+      const { items } = await EM.api('/api/products');
+      const mine = items.filter((p) => !p.seller || user.role === 'admin' || p.seller.id === user.id);
+      const list = mine.length ? mine : items;
+      const options = list.map((p) => `<option value="${p.id}">${EM.esc(p.name)}</option>`).join('');
+      document.getElementById('v-product').innerHTML = options;
+      document.getElementById('m-product').innerHTML = options;
+
+      // 4. Annonce IA
+      document.getElementById('l-gen').addEventListener('click', (e) => run(e.target, async () => {
+        const name = document.getElementById('l-name').value.trim();
+        if (!name) return EM.toast('Indiquez un nom de produit.');
+        const { listing } = await EM.api('/api/ai/seller/listing', {
+          method: 'POST',
+          body: { name, hints: document.getElementById('l-hints').value },
+        });
+        lastListing = listing;
+        show('l-out',
+          `TITRE\n${listing.title}\n\nDESCRIPTION COURTE\n${listing.shortDescription}\n\n` +
+          `DESCRIPTION LONGUE\n${listing.longDescription}\n\n` +
+          `CATÉGORIE\n${listing.category} > ${listing.subcategory}\n\n` +
+          `TAGS\n${listing.tags.join(', ')}\n\nSEO\n${listing.seoKeywords.join(', ')}\n\n` +
+          `ARGUMENTS\n- ${listing.sellingPoints.join('\n- ')}\n\n` +
+          `PRIX CONSEILLÉ\n${EM.fcfa(listing.suggestedPrice)} — ${listing.priceRationale}`);
+        document.getElementById('l-pub').style.display = 'inline-flex';
+      }));
+
+      document.getElementById('l-pub').addEventListener('click', (e) => run(e.target, async () => {
+        if (!lastListing) return;
+        const { product } = await EM.api('/api/ai/seller/listing/publish', {
+          method: 'POST', body: { listing: lastListing },
+        });
+        EM.toast(`✅ Produit publié : ${product.name}`);
+      }));
+
+      // 6. Studio photo
+      document.getElementById('ph-run').addEventListener('click', (e) => run(e.target, async () => {
+        const operations = [...document.getElementById('ph-ops').selectedOptions].map((o) => o.value);
+        const { job } = await EM.api('/api/ai/studio/photo', {
+          method: 'POST',
+          body: {
+            productName: document.getElementById('ph-name').value,
+            operations,
+            style: document.getElementById('ph-style').value || null,
+          },
+        });
+        // Le job est asynchrone : on relit son état après un court délai.
+        await new Promise((r) => setTimeout(r, 600));
+        const { job: done } = await EM.api(`/api/ai/studio/jobs/${job.id}`);
+        show('ph-out',
+          `JOB ${done.id}\nStatut : ${done.status}\n\nBRIEF DE RETOUCHE (IA)\n${done.brief}\n\n` +
+          (done.result ? `RÉSULTAT\n${done.result.note || JSON.stringify(done.result)}` : ''));
+      }));
+
+      // 7. Vidéo
+      document.getElementById('v-run').addEventListener('click', (e) => run(e.target, async () => {
+        const { job } = await EM.api('/api/ai/studio/video', {
+          method: 'POST',
+          body: {
+            productId: document.getElementById('v-product').value,
+            format: document.getElementById('v-format').value,
+            description: document.getElementById('v-brief').value,
+          },
+        });
+        const sb = job.storyboard;
+        show('v-out',
+          `${sb.title}\nMusique : ${sb.music}\n\n` +
+          sb.scenes.map((s, i) => `Scène ${i + 1} (${s.duration}s) — ${s.shot}\n  Effet : ${s.effect} · Transition : ${s.transition}\n  Texte : « ${s.text} »`).join('\n\n') +
+          `\n\nCTA : ${sb.cta}\n\nStatut rendu : ${job.status} (fournisseur : ${job.provider})`);
+      }));
+
+      // 8. Marketing
+      document.getElementById('m-run').addEventListener('click', (e) => run(e.target, async () => {
+        const { kit } = await EM.api('/api/ai/marketing/kit', {
+          method: 'POST',
+          body: {
+            productId: document.getElementById('m-product').value,
+            campaign: document.getElementById('m-campaign').value,
+          },
+        });
+        show('m-out',
+          `SLOGAN\n${kit.slogan}\n\nTEXTE PUB\n${kit.adCopy}\n\nPOST RÉSEAUX SOCIAUX\n${kit.socialPost}\n\n` +
+          `HASHTAGS\n${kit.hashtags.join(' ')}\n\nSCRIPT VIDÉO\n${kit.videoScript}\n\nVOIX-OFF\n${kit.voiceOver}`);
+      }));
+    }
+  </script>
+</body>
+</html>

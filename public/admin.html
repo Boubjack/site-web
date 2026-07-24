@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>emarket.admin — pilotage IA</title>
+  <link rel="stylesheet" href="/css/emarket.css" />
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="/">E-<span>Market</span></a>
+    <span class="ai-tag">🛡️ emarket.admin · E-Market AI</span>
+    <div class="links" id="nav-links"></div>
+  </nav>
+
+  <main class="dash">
+    <div id="gate" class="panel glass" style="display:none;text-align:center">
+      <h3>Accès administrateur requis</h3>
+      <p class="sub">Connectez-vous en admin (démo : admin@emarket.ml / admin123) depuis la <a href="/" style="color:var(--orange)">page d'accueil</a>.</p>
+    </div>
+
+    <div id="board" style="display:none">
+      <!-- 12. KPI financiers -->
+      <div class="kpis" id="kpis"></div>
+
+      <div class="dash-grid">
+        <!-- 9. Assistant IA administrateur -->
+        <section class="panel glass" style="grid-column: 1 / -1">
+          <h3>🤖 Assistant IA administrateur</h3>
+          <p class="sub">Posez vos questions : « Quels produits marchent le mieux ? » · « Quels vendeurs progressent ? » · « Quelle promotion lancer ? » · « Pourquoi les ventes diminuent ? »</p>
+          <div class="chat-body glass" id="admin-chat" style="height:280px;border-radius:12px"></div>
+          <div class="chat-input" style="border:none;padding:12px 0 0">
+            <input id="admin-input" placeholder="Votre question sur l'activité…" />
+            <button id="admin-send">➤</button>
+          </div>
+        </section>
+
+        <!-- 11. IA Sécurité -->
+        <section class="panel glass">
+          <h3>🛡️ IA Sécurité & fraude</h3>
+          <p class="sub">Détection : faux comptes, faux avis, comportements suspects, commandes inhabituelles.</p>
+          <div id="security"></div>
+        </section>
+
+        <!-- 12. Rapport financier -->
+        <section class="panel glass">
+          <h3>📊 Rapport financier IA</h3>
+          <p class="sub">Chiffre d'affaires, commissions E-Market (8%), croissance, produits rentables.</p>
+          <button class="btn btn-ghost btn-sm" id="report-btn">Générer le rapport (30 jours)</button>
+          <pre id="report-out" style="display:none"></pre>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const user = EM.user();
+    const links = document.getElementById('nav-links');
+    links.innerHTML = user
+      ? `<a href="/">Boutique</a><span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span><a href="#" id="lo">Déconnexion</a>`
+      : '<a href="/">Boutique</a>';
+    if (user) links.querySelector('#lo').onclick = (e) => { e.preventDefault(); EM.logout(); };
+
+    if (!user || user.role !== 'admin') {
+      document.getElementById('gate').style.display = 'block';
+    } else {
+      document.getElementById('board').style.display = 'block';
+      init();
+    }
+
+    async function init() {
+      // KPI (12. analyse financière)
+      const report = await EM.api('/api/ai/finance/report?days=30');
+      document.getElementById('kpis').innerHTML = `
+        <div class="kpi glass"><div class="label">Chiffre d'affaires (30j)</div><div class="value orange">${EM.fcfa(report.revenueFcfa)}</div></div>
+        <div class="kpi glass"><div class="label">Commissions E-Market (8%)</div><div class="value">${EM.fcfa(report.commissionFcfa)}</div></div>
+        <div class="kpi glass"><div class="label">Commandes</div><div class="value">${report.orderCount}</div></div>
+        <div class="kpi glass"><div class="label">Croissance</div><div class="value ${report.growthPct >= 0 ? '' : ''}">${report.growthPct === null ? 'n/a' : report.growthPct + ' %'}</div></div>`;
+
+      // 11. Sécurité
+      const sec = await EM.api('/api/ai/security/overview');
+      document.getElementById('security').innerHTML =
+        `<div style="display:flex;gap:10px;margin-bottom:12px">
+          <span class="risk-badge risk-vert">Vert : ${sec.summary.vert}</span>
+          <span class="risk-badge risk-orange">Orange : ${sec.summary.orange}</span>
+          <span class="risk-badge risk-rouge">Rouge : ${sec.summary.rouge}</span>
+        </div>` +
+        sec.results.map((r) => `
+          <div class="risk-row">
+            <span class="risk-badge risk-${r.level}">${r.level === 'vert' ? 'Normal' : r.level === 'orange' ? 'Vérification' : 'Risque élevé'}</span>
+            <div class="who">${EM.esc(r.name)} <span style="color:var(--gris)">(${r.role})</span>
+              ${r.signals.length ? `<div class="why">${r.signals.map(EM.esc).join(' · ')}</div>` : ''}
+            </div>
+          </div>`).join('');
+
+      // 12. Rapport détaillé
+      document.getElementById('report-btn').addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        const r = await EM.api('/api/ai/finance/report?days=30');
+        const out = document.getElementById('report-out');
+        out.style.display = 'block';
+        out.textContent =
+          `RAPPORT FINANCIER E-MARKET — ${new Date(r.generatedAt).toLocaleString('fr-FR')}\n` +
+          `Période : ${r.periodDays} jours\n\n` +
+          `CA total          : ${EM.fcfa(r.revenueFcfa)}\n` +
+          `Commissions (8%)  : ${EM.fcfa(r.commissionFcfa)}\n` +
+          `Commandes         : ${r.orderCount} (panier moyen ${EM.fcfa(r.averageOrderFcfa)})\n` +
+          `Croissance        : ${r.growthPct === null ? 'n/a' : r.growthPct + ' %'}\n\n` +
+          `TOP PRODUITS\n${r.topProducts.map((t, i) => `${i + 1}. ${t.name} — ${t.qty} vendus — ${EM.fcfa(t.revenue)}`).join('\n')}\n\n` +
+          `TOP VENDEURS\n${r.topSellers.map((s, i) => `${i + 1}. ${s.shop} — ${EM.fcfa(s.revenue)}`).join('\n')}\n\n` +
+          `COMMISSIONS PAR CATÉGORIE\n${Object.entries(r.commissionByCategory).map(([c, v]) => `- ${c} : ${EM.fcfa(v)}`).join('\n') || '(aucune)'}`;
+        e.target.disabled = false;
+      });
+
+      // 9. Chat admin (SSE)
+      const chatBody = document.getElementById('admin-chat');
+      const input = document.getElementById('admin-input');
+      const history = [];
+      let busy = false;
+
+      function addMsg(cls, text) {
+        const el = document.createElement('div');
+        el.className = `msg ${cls}`;
+        el.textContent = text;
+        chatBody.appendChild(el);
+        chatBody.scrollTop = chatBody.scrollHeight;
+        return el;
+      }
+      addMsg('ai', 'Bonjour 👋 Je suis votre analyste E-Market AI. Je m\'appuie sur les données réelles de la plateforme (ventes, vendeurs, avis, sécurité, finance).');
+
+      async function send() {
+        const text = input.value.trim();
+        if (!text || busy) return;
+        busy = true; input.value = '';
+        addMsg('user', text);
+        history.push({ role: 'user', content: text });
+        let aiMsg = null; let streamed = '';
+        try {
+          await EM.sse('/api/ai/admin/chat', { messages: history }, {
+            status: ({ tool }) => { if (!aiMsg) addMsg('status', `analyse : ${tool}…`); },
+            text: ({ delta }) => {
+              if (!aiMsg) aiMsg = addMsg('ai', '');
+              streamed += delta;
+              aiMsg.textContent = streamed;
+              chatBody.scrollTop = chatBody.scrollHeight;
+            },
+            done: ({ text: t }) => {
+              if (!aiMsg) aiMsg = addMsg('ai', t || streamed);
+              else aiMsg.textContent = t || streamed;
+              history.push({ role: 'assistant', content: t || streamed });
+            },
+            error: ({ message }) => addMsg('ai', message),
+          });
+        } catch (err) { addMsg('ai', `⚠️ ${err.message}`); }
+        busy = false;
+      }
+      document.getElementById('admin-send').addEventListener('click', send);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+    }
+  </script>
+</body>
+</html>

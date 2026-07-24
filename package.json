@@ -1,0 +1,22 @@
+{
+  "name": "e-market",
+  "version": "1.0.0",
+  "description": "E-Market — marketplace intelligente propulsée par E-Market AI",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node server/db/seed.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "license": "MIT"
+}

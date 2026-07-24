@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Market — la marketplace intelligente</title>
+  <link rel="stylesheet" href="/css/emarket.css" />
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="/">E-<span>Market</span></a>
+    <span class="ai-tag">✨ Propulsé par E-Market AI</span>
+    <div class="links" id="nav-links"></div>
+  </nav>
+
+  <!-- Hero + recherche IA -->
+  <header class="hero">
+    <h1>Votre marché, <em>en plus intelligent</em>.</h1>
+    <p>Décrivez ce que vous cherchez avec vos mots — E-Market AI comprend et trouve pour vous.</p>
+    <div class="ai-search glass">
+      <input id="search-input" placeholder="Ex : un téléphone puissant pour jouer à moins de 200 000 FCFA…" />
+      <button class="btn btn-orange" id="search-btn">✨ Recherche IA</button>
+    </div>
+    <div class="search-hint">Essayez : « une robe élégante noire » · « une tenue de mariage à 50 000 FCFA » · « un cadeau pour ma mère »</div>
+    <div class="search-intent glass" id="search-intent"></div>
+  </header>
+
+  <!-- Résultats de recherche -->
+  <section class="section" id="results-section" style="display:none">
+    <h2>Résultats <span class="ai-tag">✨ IA</span></h2>
+    <div class="sub" id="results-sub"></div>
+    <div class="grid" id="results-grid"></div>
+  </section>
+
+  <!-- Recommandations -->
+  <section class="section">
+    <h2>Recommandé pour vous <span class="ai-tag">✨ IA</span></h2>
+    <div class="sub">Sélection basée sur vos goûts, votre historique et votre budget.</div>
+    <div class="grid" id="foryou-grid"></div>
+  </section>
+
+  <section class="section">
+    <h2>Vous pourriez aimer <span class="ai-tag">✨ IA</span></h2>
+    <div class="sub">Des découvertes en dehors de vos habitudes.</div>
+    <div class="grid" id="maylike-grid"></div>
+  </section>
+
+  <!-- Catalogue -->
+  <section class="section">
+    <h2>Tout le catalogue</h2>
+    <div class="sub">Produits vérifiés, vendeurs notés, livraison 24-72h à Bamako.</div>
+    <div class="grid" id="catalog-grid"></div>
+  </section>
+
+  <footer class="footer">E-<span>Market</span> — Bamako, Mali · Assistant, recherche, recommandations et sécurité propulsés par <span>E-Market AI</span></footer>
+
+  <!-- Modale produit -->
+  <div class="overlay" id="product-overlay">
+    <div class="modal glass" id="product-modal"></div>
+  </div>
+
+  <!-- Modale connexion -->
+  <div class="overlay" id="login-overlay">
+    <div class="modal glass">
+      <button class="close" onclick="document.getElementById('login-overlay').classList.remove('open')">✕</button>
+      <h3>Connexion</h3>
+      <div class="field"><label>Email</label><input id="login-email" placeholder="client@emarket.ml" /></div>
+      <div class="field"><label>Mot de passe</label><input id="login-pass" type="password" placeholder="client123" /></div>
+      <button class="btn btn-orange" id="login-btn" style="width:100%">Se connecter</button>
+      <p style="color:var(--gris);font-size:0.78rem;margin-top:14px">
+        Comptes démo — client : <b>client@emarket.ml</b> / client123 ·
+        vendeur : <b>vendeur@emarket.ml</b> / vendeur123 ·
+        admin : <b>admin@emarket.ml</b> / admin123
+      </p>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/chat.js"></script>
+  <script>
+    // ---------- Navigation selon la session ----------
+    function renderNav() {
+      const user = EM.user();
+      const links = document.getElementById('nav-links');
+      if (!user) {
+        links.innerHTML = '<a href="#" id="nav-login">Se connecter</a>';
+        links.querySelector('#nav-login').onclick = (e) => {
+          e.preventDefault();
+          document.getElementById('login-overlay').classList.add('open');
+        };
+      } else {
+        links.innerHTML = `
+          ${user.role === 'seller' ? '<a href="/seller.html">Espace vendeur</a>' : ''}
+          ${user.role === 'admin' ? '<a href="/admin.html">emarket.admin</a>' : ''}
+          <span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span>
+          <a href="#" id="nav-logout">Déconnexion</a>`;
+        links.querySelector('#nav-logout').onclick = (e) => { e.preventDefault(); EM.logout(); };
+      }
+    }
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      try {
+        const data = await EM.api('/api/auth/login', {
+          method: 'POST',
+          body: {
+            email: document.getElementById('login-email').value,
+            password: document.getElementById('login-pass').value,
+          },
+        });
+        EM.setSession(data.token, data.user);
+        document.getElementById('login-overlay').classList.remove('open');
+        EM.toast(`Bienvenue ${data.user.name} !`);
+        renderNav();
+        loadRecos();
+      } catch (err) { EM.toast(err.message); }
+    });
+
+    // ---------- Recherche IA ----------
+    async function doSearch() {
+      const q = document.getElementById('search-input').value.trim();
+      if (!q) return;
+      const btn = document.getElementById('search-btn');
+      btn.disabled = true; btn.textContent = '✨ Analyse…';
+      try {
+        const { intent, results } = await EM.api('/api/ai/search', { method: 'POST', body: { query: q } });
+        const parts = [];
+        if (intent.category) parts.push(`catégorie : ${intent.category}`);
+        if (intent.maxPrice) parts.push(`budget max : ${EM.fcfa(intent.maxPrice)}`);
+        if (intent.color) parts.push(`couleur : ${intent.color}`);
+        if (intent.occasion) parts.push(`occasion : ${intent.occasion}`);
+        const intentEl = document.getElementById('search-intent');
+        intentEl.style.display = 'block';
+        intentEl.textContent = `✨ E-Market AI a compris : ${parts.length ? parts.join(' · ') : 'recherche libre'} (${intent.source === 'ai' ? 'analyse par modèle' : 'moteur local'})`;
+        document.getElementById('results-section').style.display = 'block';
+        document.getElementById('results-sub').textContent = `${results.length} produit(s) pour « ${q} »`;
+        renderGrid('results-grid', results);
+        document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) { EM.toast(err.message); }
+      btn.disabled = false; btn.textContent = '✨ Recherche IA';
+    }
+    document.getElementById('search-btn').addEventListener('click', doSearch);
+    document.getElementById('search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+
+    // ---------- Grilles ----------
+    function renderGrid(id, items) {
+      const grid = document.getElementById(id);
+      grid.innerHTML = items.map(EM.productCardHtml).join('') || '<p style="color:var(--gris)">Aucun produit.</p>';
+      grid.querySelectorAll('.card').forEach((c) => c.addEventListener('click', () => openProduct(c.dataset.id)));
+    }
+
+    async function loadRecos() {
+      try {
+        const [forYou, mayLike] = await Promise.all([
+          EM.api('/api/ai/recommendations?type=for-you'),
+          EM.api('/api/ai/recommendations?type=you-may-like'),
+        ]);
+        renderGrid('foryou-grid', forYou.items);
+        renderGrid('maylike-grid', mayLike.items);
+      } catch { /* silencieux */ }
+    }
+
+    async function loadCatalog() {
+      const { items } = await EM.api('/api/products');
+      renderGrid('catalog-grid', items);
+    }
+
+    // ---------- Fiche produit ----------
+    async function openProduct(id) {
+      EM.track('view', { productId: id });
+      const [{ product, reviews }, complete] = await Promise.all([
+        EM.api(`/api/products/${id}`),
+        EM.api(`/api/ai/recommendations?type=complete-purchase&productId=${id}`),
+      ]);
+      const modal = document.getElementById('product-modal');
+      modal.innerHTML = `
+        <button class="close" onclick="document.getElementById('product-overlay').classList.remove('open')">✕</button>
+        <div style="font-size:4.5rem;text-align:center">${product.emoji}</div>
+        <h3>${EM.esc(product.name)}</h3>
+        <div style="color:var(--orange);font-weight:800;font-size:1.4rem">${EM.fcfa(product.price)}</div>
+        <div style="color:var(--gris);font-size:0.85rem;margin:6px 0 12px">
+          Vendu par <b>${EM.esc(product.seller ? product.seller.shop : 'E-Market')}</b>
+          ${product.rating ? ` · ★ ${product.rating} (${product.reviewCount} avis)` : ''}
+          · Stock : ${product.stock}
+        </div>
+        <p style="font-size:0.9rem;line-height:1.5">${EM.esc(product.description)}</p>
+        ${product.colors.length ? `<p style="margin-top:10px;font-size:0.85rem"><b>Couleurs :</b> ${product.colors.map(EM.esc).join(', ')}</p>` : ''}
+        ${product.sizes.length ? `<p style="font-size:0.85rem"><b>Tailles :</b> ${product.sizes.map(EM.esc).join(', ')}</p>` : ''}
+        ${product.specs ? `<p style="font-size:0.85rem"><b>Specs :</b> ${Object.entries(product.specs).map(([k, v]) => `${EM.esc(k)}: ${EM.esc(v)}`).join(' · ')}</p>` : ''}
+        <div style="display:flex;gap:10px;margin:18px 0">
+          <button class="btn btn-orange" id="buy-btn" style="flex:1">🛒 Acheter maintenant</button>
+          <button class="btn btn-ghost" id="fav-btn">🤍</button>
+        </div>
+        ${reviews.length ? `<h4 style="margin:14px 0 8px">Avis clients</h4>` +
+          reviews.map((r) => `<div style="font-size:0.83rem;padding:8px 0;border-top:1px solid var(--glass-border)">
+            <span class="rating" style="color:var(--jaune)">${'★'.repeat(r.rating)}</span>
+            <b>${EM.esc(r.author)}</b> — ${EM.esc(r.comment)}</div>`).join('') : ''}
+        ${complete.items.length ? `
+          <h4 style="margin:18px 0 10px">Complétez votre achat <span class="ai-tag">✨ IA</span></h4>
+          <div class="chat-products">${complete.items.map((p) => `
+            <div class="chat-product" data-id="${p.id}">
+              <div class="thumb">${p.emoji}</div>
+              <div class="info"><div class="p-name">${EM.esc(p.name)}</div>
+              <div class="p-price">${EM.fcfa(p.price)}</div></div>
+            </div>`).join('')}</div>` : ''}
+      `;
+      modal.querySelectorAll('.chat-product').forEach((c) =>
+        c.addEventListener('click', () => openProduct(c.dataset.id)));
+      modal.querySelector('#fav-btn').addEventListener('click', (e) => {
+        EM.track('favorite', { productId: id });
+        e.target.textContent = '🧡';
+        EM.toast('Ajouté aux favoris — E-Market AI s\'en souviendra !');
+      });
+      modal.querySelector('#buy-btn').addEventListener('click', async () => {
+        if (!EM.user()) {
+          document.getElementById('product-overlay').classList.remove('open');
+          document.getElementById('login-overlay').classList.add('open');
+          return EM.toast('Connectez-vous pour commander.');
+        }
+        try {
+          const { order, risk } = await EM.api('/api/orders', { method: 'POST', body: { items: [{ productId: id, qty: 1 }] } });
+          document.getElementById('product-overlay').classList.remove('open');
+          EM.toast(risk.level === 'rouge'
+            ? '⚠️ Commande en vérification de sécurité — notre équipe vous contactera.'
+            : `✅ Commande ${order.id.slice(0, 8)} confirmée — ${EM.fcfa(order.total)}`);
+        } catch (err) { EM.toast(err.message); }
+      });
+      document.getElementById('product-overlay').classList.add('open');
+    }
+    window.EMOpenProduct = openProduct; // utilisé par le widget de chat
+
+    // Fermeture des modales au clic sur le fond
+    document.querySelectorAll('.overlay').forEach((o) =>
+      o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('open'); }));
+
+    renderNav();
+    loadRecos();
+    loadCatalog();
+  </script>
+</body>
+</html>

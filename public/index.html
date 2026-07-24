@@ -37,6 +37,12 @@
     </div>
   </header>
 
+  <!-- Stories IA (auto-générées : nouveautés, tendances, bons plans…) -->
+  <section class="section" id="stories-section" style="display:none">
+    <h2>À la une <span class="ai-tag">✨ Stories IA</span></h2>
+    <div class="stories-strip" id="stories-strip"></div>
+  </section>
+
   <!-- Bannière personnalisée (AI Personnalisation) -->
   <section class="section" id="perso-banner" style="display:none">
     <div class="glass" id="perso-banner-inner" style="padding:22px 26px;border-left:3px solid var(--bleu)"></div>
@@ -163,7 +169,63 @@
     function renderGrid(id, items) {
       const grid = document.getElementById(id);
       grid.innerHTML = items.map(EM.productCardHtml).join('') || '<p style="color:var(--gris)">Aucun produit.</p>';
+      grid.querySelectorAll('.card').forEach((c) => {
+        c.addEventListener('click', () => openProduct(c.dataset.id));
+        attachHoverInsight(c);
+      });
+    }
+
+    // ---------- Hover intelligent ----------
+    const _hoverCache = {};
+    function attachHoverInsight(card) {
+      let done = false;
+      card.addEventListener('mouseenter', async () => {
+        if (done) return; done = true;
+        const id = card.dataset.id;
+        try {
+          const data = _hoverCache[id] || (_hoverCache[id] = await EM.api(`/api/ai/hover/${id}`));
+          if (!card.matches(':hover')) return;
+          const el = document.createElement('div');
+          el.className = 'hover-insight';
+          el.innerHTML = `<div class="hi-reason">✨ ${EM.esc(data.reason)}</div>` +
+            (data.facts && data.facts.length ? `<div class="hi-facts">${data.facts.map((f) => `<span class="hi-fact">${EM.esc(f)}</span>`).join('')}</div>` : '');
+          const img = card.querySelector('.img');
+          if (img && !img.querySelector('.hover-insight')) img.appendChild(el);
+        } catch { /* silencieux */ }
+      });
+    }
+
+    // ---------- Stories IA ----------
+    async function loadStories() {
+      try {
+        const { stories } = await EM.api('/api/ai/stories');
+        if (!stories || !stories.length) return;
+        const strip = document.getElementById('stories-strip');
+        strip.innerHTML = stories.map((s) => `
+          <button class="story" data-id="${s.id}" style="--story-accent:${s.accent}">
+            <div class="ring">${s.emoji}</div>
+            <div class="s-title">${EM.esc(s.title)}</div>
+            <div class="s-sub">${EM.esc(s.subtitle)}</div>
+          </button>`).join('');
+        strip.querySelectorAll('.story').forEach((b) => {
+          b.addEventListener('click', () => openStory(stories.find((s) => s.id === b.dataset.id)));
+        });
+        document.getElementById('stories-section').style.display = 'block';
+      } catch { /* silencieux */ }
+    }
+
+    function openStory(story) {
+      if (!story) return;
+      const modal = document.getElementById('product-modal');
+      modal.innerHTML = `
+        <button class="close" onclick="document.getElementById('product-overlay').classList.remove('open')">✕</button>
+        <h3>${story.emoji} ${EM.esc(story.title)}</h3>
+        <div class="sub" style="color:var(--gris);margin-bottom:16px">${EM.esc(story.subtitle)}</div>
+        <div class="grid" id="story-grid"></div>`;
+      const grid = modal.querySelector('#story-grid');
+      grid.innerHTML = story.products.map(EM.productCardHtml).join('');
       grid.querySelectorAll('.card').forEach((c) => c.addEventListener('click', () => openProduct(c.dataset.id)));
+      document.getElementById('product-overlay').classList.add('open');
     }
 
     async function loadRecos() {
@@ -270,6 +332,7 @@
     renderNav();
     ['foryou-grid', 'maylike-grid', 'catalog-grid'].forEach((id) => EM.skeletonGrid(id, 5));
     loadHome();
+    loadStories();
     loadRecos();
     loadCatalog();
 

@@ -18,4 +18,12 @@ registry.register(require('./personalization'));
 registry.register(require('./translation'));
 registry.register(require('./recommendation'));
 
+// Cerveau central + comité de direction IA (C-suite). Admin uniquement.
+registry.register(require('./brain'));
+registry.register(require('./ceo'));
+registry.register(require('./cfo'));
+registry.register(require('./cmo'));
+registry.register(require('./coo'));
+registry.register(require('./cto'));
+
 module.exports = registry;

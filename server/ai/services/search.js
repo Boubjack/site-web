@@ -6,6 +6,7 @@
 const provider = require('../provider/anthropic');
 const catalog = require('./catalog');
 const recommender = require('./recommender');
+const vectors = require('./vectors');
 
 const INTENT_SCHEMA = {
   type: 'object',
@@ -67,7 +68,7 @@ function localIntent(query) {
 
 async function search(query, { userId } = {}) {
   const intent = await parseIntent(query);
-  const results = catalog.searchProducts({
+  let results = catalog.searchProducts({
     query: intent.keywords || query,
     category: intent.category || undefined,
     maxPrice: intent.maxPrice || undefined,
@@ -77,8 +78,21 @@ async function search(query, { userId } = {}) {
     gender: intent.gender || undefined,
     limit: 12,
   });
+  let semantic = false;
+  // Repli sémantique (compatible FAISS) quand la recherche lexicale ne
+  // rapporte rien : on comprend le sens même sans mot-clé exact.
+  if (!results.length) {
+    const hits = vectors.semanticSearch(intent.keywords || query, {
+      limit: 12,
+      category: intent.category || undefined,
+    });
+    if (hits.length) {
+      results = hits.map((h) => catalog.productCard(h.product));
+      semantic = true;
+    }
+  }
   if (userId) recommender.trackEvent({ userId, type: 'search', query });
-  return { intent, results };
+  return { intent, results, semantic };
 }
 
 module.exports = { search, parseIntent };

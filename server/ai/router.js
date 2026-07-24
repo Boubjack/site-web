@@ -9,6 +9,7 @@ const { asyncHandler, ApiError } = require('../middleware/errors');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
 const provider = require('./provider/anthropic');
+const llm = require('./provider/llm');
 const config = require('../config');
 
 const assistants = require('./assistants'); // registre d'assistants : shopping, seller, operator
@@ -26,6 +27,7 @@ const fraud = require('./services/fraud');
 const analytics = require('./services/analytics');
 const memory = require('./services/memory');
 const i18n = require('./services/i18n');
+const discovery = require('./services/discovery');
 
 const router = express.Router();
 
@@ -62,12 +64,17 @@ function sanitizeMessages(body) {
 /* Statut du module                                                    */
 /* ------------------------------------------------------------------ */
 router.get('/status', (_req, res) => {
+  const active = llm.activeProvider();
   res.json({
     name: 'E-Market AI',
-    providerConfigured: provider.enabled(),
-    mode: provider.enabled() ? 'modeles-cloud' : 'moteur-local',
-    model: provider.enabled() ? config.ai.model : null,
+    providerConfigured: llm.enabled(),
+    activeProvider: active,
+    mode: llm.enabled() ? 'modeles-cloud-ou-local' : 'moteur-local',
+    model: active === 'anthropic' ? config.ai.model
+      : active === 'openrouter' ? config.ai.openrouterModel
+        : active === 'ollama' ? config.ai.ollamaModel : null,
     mediaProviders: config.media,
+    vectors: config.vectors,
     languages: i18n.languages(),
   });
 });
@@ -300,6 +307,23 @@ router.get('/home', (req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
+/* Découverte — Stories IA · Vitrine vivante · Hover intelligent       */
+/* ------------------------------------------------------------------ */
+router.get('/stories', (_req, res) => {
+  res.json(discovery.stories());
+});
+
+router.get('/showcase', (req, res) => {
+  res.json(discovery.showcase(req.user ? req.user.id : null));
+});
+
+router.get('/hover/:productId', (req, res) => {
+  const insight = discovery.hoverInsight(req.params.productId, req.user ? req.user.id : null);
+  if (!insight) throw new ApiError(404, 'Produit introuvable.');
+  res.json(insight);
+});
+
+/* ------------------------------------------------------------------ */
 /* AI Stock — alertes de rupture (limité au vendeur connecté)          */
 /* ------------------------------------------------------------------ */
 router.get('/seller/stock-alerts', requireRole('seller', 'admin'), (req, res) => {
@@ -342,6 +366,22 @@ router.get('/moderation/flags', requireRole('admin'), (_req, res) => {
 
 router.post('/moderation/check', requireRole('admin'), heavyLimit, asyncHandler(async (req, res) => {
   res.json(await agents.get('moderation').run(req.body || {}, { user: req.user }));
+}));
+
+/* ------------------------------------------------------------------ */
+/* Marketplace Brain + Comité de direction IA (C-suite)                */
+/* ------------------------------------------------------------------ */
+router.get('/brain', requireRole('admin'), asyncHandler(async (req, res) => {
+  const days = parseInt(req.query.days || '30', 10) || 30;
+  res.json(await agents.get('brain').run({ days }, { user: req.user }));
+}));
+
+const EXEC_ROLES = { ceo: 'ceo', cfo: 'cfo', cmo: 'cmo', coo: 'coo', cto: 'cto' };
+router.get('/exec/:role', requireRole('admin'), asyncHandler(async (req, res) => {
+  const id = EXEC_ROLES[String(req.params.role).toLowerCase()];
+  if (!id) throw new ApiError(404, 'Rôle exécutif inconnu (ceo|cfo|cmo|coo|cto).');
+  const days = parseInt(req.query.days || '30', 10) || 30;
+  res.json(await agents.get(id).run({ days }, { user: req.user }));
 }));
 
 /* ------------------------------------------------------------------ */

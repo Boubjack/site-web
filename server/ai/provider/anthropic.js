@@ -16,7 +16,9 @@ const { createLogger } = require('../../utils/logger');
 
 const log = createLogger('ai:provider');
 
-const client = config.ai.enabled ? new Anthropic({ apiKey: config.ai.anthropicApiKey }) : null;
+// Le client Anthropic n'existe que si SA propre clé est fournie — indépendant
+// des autres fournisseurs (OpenRouter, Ollama) que gère provider/llm.js.
+const client = config.ai.anthropicApiKey ? new Anthropic({ apiKey: config.ai.anthropicApiKey }) : null;
 
 function enabled() {
   return Boolean(client);

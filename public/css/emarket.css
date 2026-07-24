@@ -481,6 +481,39 @@ select option { background: var(--noir-2); }
 .toast.error { border-left-color: var(--rouge); }
 .toast.error::before { content: '⚠️'; }
 
+/* ---------- Stories IA ---------- */
+.stories-strip { display: flex; gap: 16px; overflow-x: auto; padding: 6px 2px 12px; scroll-snap-type: x mandatory; }
+.story {
+  flex: 0 0 auto; width: 88px; text-align: center; cursor: pointer;
+  background: none; border: none; color: var(--text); scroll-snap-align: start;
+}
+.story .ring {
+  width: 72px; height: 72px; margin: 0 auto 8px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.8rem;
+  background: var(--noir-2);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--story-accent, var(--bleu));
+  transition: transform var(--dur) var(--ease-out);
+}
+.story:hover .ring { transform: scale(1.06) translateY(-2px); }
+.story .s-title { font-size: 0.72rem; font-weight: 600; line-height: 1.2; }
+.story .s-sub { font-size: 0.64rem; color: var(--text-3); margin-top: 2px; }
+
+/* ---------- Hover intelligent (info-bulle IA sur les cartes) ---------- */
+.card { }
+.hover-insight {
+  position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 5;
+  background: rgba(10,10,14,0.9); backdrop-filter: blur(10px);
+  border: 1px solid var(--border-strong); border-radius: var(--r);
+  padding: 10px 12px; box-shadow: var(--shadow-lg);
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out);
+}
+.card:hover .hover-insight { opacity: 1; transform: none; }
+.hover-insight .hi-reason { font-size: 0.76rem; font-weight: 600; color: var(--bleu-2); }
+.hover-insight .hi-facts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.hover-insight .hi-fact { font-size: 0.66rem; color: var(--text-2); background: var(--glass-strong); border: 1px solid var(--glass-border); border-radius: var(--r-pill); padding: 2px 8px; }
+@media (hover: none) { .hover-insight { display: none; } }
+
 /* ---------- Footer ---------- */
 .footer { text-align: center; color: var(--text-2); font-size: 0.82rem; padding: 56px 20px 40px; margin-top: 30px; border-top: 1px solid var(--glass-border); }
 .footer span { color: var(--bleu); font-weight: 700; }

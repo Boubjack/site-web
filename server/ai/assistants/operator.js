@@ -13,6 +13,7 @@ const forecast = require('../services/forecast');
 const fraud = require('../services/fraud');
 const catalog = require('../services/catalog');
 const trendsAgent = require('../agents/trends');
+const agents = require('../agents');
 const { store } = require('../../db/store');
 
 const SYSTEM_PROMPT = `Tu es E-Market Operator AI, l'assistant métier de l'administrateur d'E-Market
@@ -35,6 +36,12 @@ Réponds de façon structurée : d'abord la réponse chiffrée, puis l'analyse, 
 1 à 3 recommandations concrètes (promotions à lancer, vendeurs à mettre en
 avant, produits à promouvoir).
 
+Tu disposes aussi d'un COMITÉ DE DIRECTION IA : marketplace_brain (score de
+santé /100, opportunités, risques), ceo_briefing (3 priorités stratégiques),
+cfo_analysis (finance), cmo_analysis (marketing/conversion), coo_analysis
+(opérations/stocks), cto_analysis (santé du système IA). Utilise-les pour les
+questions de pilotage global, de stratégie ou de bilan.
+
 Quand un graphique éclaire ta réponse, termine par une ligne CHART:[clé] avec
 UNE seule clé parmi : sales-14d, top-products, sellers, categories, forecast.
 Le site affichera le graphique. N'affiche jamais cette ligne autrement.`;
@@ -52,6 +59,13 @@ function buildTools() {
     { def: { name: 'sales_forecast', description: 'Prévision de ventes, croissance et tendance (régression sur les revenus quotidiens) + catégories en tendance.', input_schema: { type: 'object', properties: { days: { type: 'number' }, horizon: { type: 'number' } } } }, run: (i) => ({ forecast: forecast.salesForecast(i), trendingCategories: forecast.trendingCategories() }) },
     { def: { name: 'trends_overview', description: 'AI Tendances : produits/catégories/recherches populaires, tendances locales et saisonnières, + recommandations de mise en avant.', input_schema: { type: 'object', properties: {} } }, run: (i, ctx) => trendsAgent.run(i, ctx) },
     { def: { name: 'moderation_flags', description: 'AI Modération : file des signalements automatiques (contenu interdit, contrefaçons, spam, offensant) à traiter.', input_schema: { type: 'object', properties: {} } }, run: () => ({ flags: store.find('moderationFlags', (fl) => fl.status === 'ouvert') }) },
+    // Comité de direction IA (Marketplace Brain + C-suite).
+    { def: { name: 'marketplace_brain', description: 'Cerveau central : score de santé /100, opportunités et risques transverses.', input_schema: { type: 'object', properties: { days: { type: 'number' } } } }, run: (i, ctx) => agents.run('brain', i, ctx) },
+    { def: { name: 'ceo_briefing', description: 'Briefing exécutif (CEO) : santé, 3 priorités stratégiques, synthèse finance/marketing/opérations.', input_schema: { type: 'object', properties: { days: { type: 'number' } } } }, run: (i, ctx) => agents.run('ceo', i, ctx) },
+    { def: { name: 'cfo_analysis', description: 'CFO : revenus, commissions, croissance, prévision, rentabilité.', input_schema: { type: 'object', properties: { days: { type: 'number' } } } }, run: (i, ctx) => agents.run('cfo', i, ctx) },
+    { def: { name: 'cmo_analysis', description: 'CMO : conversion, tendances, recherches populaires, produits à promouvoir.', input_schema: { type: 'object', properties: { days: { type: 'number' } } } }, run: (i, ctx) => agents.run('cmo', i, ctx) },
+    { def: { name: 'coo_analysis', description: 'COO : stocks, exécution des commandes, couverture catalogue, vendeurs.', input_schema: { type: 'object', properties: { days: { type: 'number' } } } }, run: (i, ctx) => agents.run('coo', i, ctx) },
+    { def: { name: 'cto_analysis', description: 'CTO : fournisseurs IA configurés, volumétrie, recommandations techniques.', input_schema: { type: 'object', properties: {} } }, run: (i, ctx) => agents.run('cto', i, ctx) },
   ];
 }
 
@@ -66,6 +80,19 @@ function localFallback(ctx, messages) {
   const q = catalog.normalize(typeof last?.content === 'string' ? last.content : '');
   const f = catalog.formatFcfa;
 
+  if (/ceo|priorite|strateg|sante|santé|bilan|vue global|brain|cerveau|comite|comité|direction/.test(q)) {
+    const b = require('../services/brain');
+    const snap = b.snapshot({ days: 30 });
+    const health = b.healthScore(snap);
+    const { opportunities, risks } = b.opportunities(snap);
+    const lines = [
+      `Santé plateforme : ${health.score}/100 (tendance ${snap.growth.trend}).`,
+      `CA 30 j : ${f(snap.finance.revenueFcfa)} · commissions ${f(snap.finance.commissionFcfa)} · conversion ${snap.commerce.conversion.ratePct === null ? 'n/a' : snap.commerce.conversion.ratePct + '%'}.`,
+    ];
+    if (risks.length) lines.push('Risques :\n' + risks.map((r) => `• ${r}`).join('\n'));
+    if (opportunities.length) lines.push('Opportunités :\n' + opportunities.map((o) => `• ${o}`).join('\n'));
+    return { text: lines.join('\n\n'), chart: analytics.chartData('sales-14d') };
+  }
   if (/produit|meilleur|marche|vend/.test(q)) {
     const top = analytics.topProducts({ days: 30 });
     return { text: 'Top produits (30 jours) :\n' + top.map((t, i) => `${i + 1}. ${t.name} — ${t.qty} vendus — ${f(t.revenue)}`).join('\n'), chart: analytics.chartData('top-products') };

@@ -80,13 +80,29 @@ Aucune récupération d'images sur Internet. Les studios travaillent sur les
 motifs, textures, proportions et couleurs réelles du produit — jamais de
 détail inventé ni déformé.
 
-## 6. Rendu média — mode spécification
+## 6. Rendu média — spécification **puis** rendu open source réel
 
-Sans moteur de rendu branché (`*_PROVIDER=none`), le « cerveau créatif » est
-entièrement fonctionnel : specs, pipelines, storyboards, plans caméra,
-voix-off, musique, plans de campagne. Le rendu réel des pixels 4K/8K s'active en
-branchant un moteur via `.env`, **sans modifier le reste du code** (pattern
-adaptateur dans `studio/jobs.js`).
+Sans moteur (`*_PROVIDER=none`, défaut), le « cerveau créatif » est entièrement
+fonctionnel : specs, pipelines, storyboards, plans caméra, voix-off, musique,
+plans de campagne (mode spécification, aucun appel réseau).
+
+Les **adaptateurs de rendu réel** sont implémentés (`studio/render.js`, câblés
+dans `studio/jobs.js`) et s'activent par `.env`, vers des **moteurs open
+source** :
+
+- **Replicate** (`REPLICATE_API_TOKEN`) — un token unique pour FLUX.1
+  (`IMAGE_PROVIDER=flux`), LTX-Video / Wan 2.2 (`VIDEO_PROVIDER=ltx|wan`),
+  Real-ESRGAN, RMBG… Le prompt est construit **depuis la spec** (produit, décor,
+  éclairage, mannequin, cohérence, identité de marque).
+- **Serveur auto-hébergé** (`IMAGE_PROVIDER_URL` / `VIDEO_PROVIDER_URL`) —
+  ComfyUI / Automatic1111 / maison : reçoit `{ prompt, width, height, … }`,
+  renvoie une URL de média.
+
+Sécurité d'exploitation : si le moteur est indisponible (réseau, quota, clé),
+le job **ne tombe jamais en erreur** — il revient proprement au dossier de
+production (mode spécification) avec un message explicite. Le fournisseur de
+texte suit la même logique via `provider/llm.js` (OpenRouter/Ollama → repli
+local).
 
 ## 7. Vérifications effectuées
 

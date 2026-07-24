@@ -4,7 +4,7 @@
  * par le module vision) ; l'IA génère une fiche produit professionnelle
  * complète avec suggestion de prix basée sur le catalogue existant.
  */
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 const catalog = require('./catalog');
 const { store } = require('../../db/store');
 

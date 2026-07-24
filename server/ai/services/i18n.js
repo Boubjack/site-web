@@ -3,7 +3,7 @@
  * bambara et d'autres langues africaines : il suffit d'ajouter un code
  * dans SUPPORTED (le repli lexical local couvre déjà quelques bases).
  */
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 
 const SUPPORTED = {
   fr: { name: 'Français', status: 'actif' },

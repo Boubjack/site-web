@@ -3,7 +3,7 @@
  * "Je veux un téléphone puissant pour jouer à moins de 200 000 FCFA"
  *  → intention structurée → filtres catalogue → meilleurs résultats.
  */
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 const catalog = require('./catalog');
 const recommender = require('./recommender');
 const vectors = require('./vectors');

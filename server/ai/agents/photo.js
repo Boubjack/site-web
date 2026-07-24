@@ -13,7 +13,7 @@
  * Permissions : vendeurs et administrateurs uniquement.
  */
 const config = require('../../config');
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 const jobs = require('../studio/jobs');
 const { store } = require('../../db/store');
 const catalog = require('../services/catalog');

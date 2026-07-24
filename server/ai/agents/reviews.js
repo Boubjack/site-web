@@ -4,7 +4,7 @@
  * Permissions : vendeur (ses produits) / admin (tout). L'isolation vendeur est
  * appliquée par l'appelant (assistant/route) via le paramètre sellerId.
  */
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 const { store } = require('../../db/store');
 const catalog = require('../services/catalog');
 

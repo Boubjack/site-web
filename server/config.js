@@ -74,6 +74,19 @@ const config = {
     ttsProvider: process.env.TTS_PROVIDER || 'none',     // none | coqui | piper | elevenlabs | custom
     musicProvider: process.env.MUSIC_PROVIDER || 'none', // none | musicgen | suno | custom
 
+    // Accès aux moteurs de rendu.
+    // Replicate héberge de nombreux modèles OPEN SOURCE (FLUX.1, Real-ESRGAN,
+    // RMBG, LTX-Video, Wan…) via une seule API.
+    replicateApiToken: process.env.REPLICATE_API_TOKEN || '',
+    // Réfs de modèles Replicate (surchargeable) — "owner/model" ou "...:version".
+    fluxModel: process.env.FLUX_MODEL || 'black-forest-labs/flux-schnell',
+    ltxModel: process.env.LTX_MODEL || 'lightricks/ltx-video',
+    wanModel: process.env.WAN_MODEL || 'wan-video/wan-2.2',
+    // Endpoints auto-hébergés (ComfyUI / Automatic1111 / serveur maison).
+    // Reçoivent { prompt, width, height, ... } et renvoient { url } ou une image.
+    imageProviderUrl: process.env.IMAGE_PROVIDER_URL || '',
+    videoProviderUrl: process.env.VIDEO_PROVIDER_URL || '',
+
     get rendersImages() { return this.imageProvider !== 'none'; },
     get rendersVideo() { return this.videoProvider !== 'none'; },
   },

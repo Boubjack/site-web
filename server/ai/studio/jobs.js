@@ -10,8 +10,25 @@
 const config = require('../../config');
 const { store } = require('../../db/store');
 const { createLogger } = require('../../utils/logger');
+const render = require('./render');
 
 const log = createLogger('ai:studio');
+
+// Adaptateur de rendu réel : tente le moteur, retombe proprement sur la
+// spécification si l'appel échoue (réseau, quota, clé) — le job n'échoue jamais
+// pour une raison externe : le dossier de production reste livré.
+function realRender(fn, fallbackMsg) {
+  return {
+    async run(job) {
+      try {
+        return await fn(job.spec);
+      } catch (err) {
+        log.warn('render fallback', { jobId: job.id, error: err.message });
+        return { rendered: false, mode: 'specification', message: `${fallbackMsg} (moteur indisponible : ${err.message}).` };
+      }
+    },
+  };
+}
 
 // Adaptateurs image. Pour brancher un moteur : ajouter { async run(job) }.
 const imageProviders = {
@@ -27,8 +44,11 @@ const imageProviders = {
       };
     },
   },
-  // flux / sdxl / replicate / stability : { async run(job) { /* → { rendered:true, outputUrl } */ } },
 };
+// Moteurs image OPEN SOURCE (FLUX.1, SDXL…) via Replicate ou HTTP auto-hébergé.
+for (const p of ['flux', 'sdxl', 'replicate', 'stability', 'custom']) {
+  imageProviders[p] = realRender((spec) => render.renderImage(spec), 'Dossier photo prêt');
+}
 
 const videoProviders = {
   none: {
@@ -44,8 +64,11 @@ const videoProviders = {
       };
     },
   },
-  // ltx / wan / runway / pika : { async run(job) { ... } },
 };
+// Moteurs vidéo OPEN SOURCE (LTX-Video, Wan 2.2…) via Replicate ou HTTP.
+for (const p of ['ltx', 'wan', 'runway', 'pika', 'custom']) {
+  videoProviders[p] = realRender((plan) => render.renderVideo(plan), 'Plan vidéo prêt');
+}
 
 // Campagne complète (« Créer ma campagne ») : pack multi-livrables.
 const campaignProviders = {

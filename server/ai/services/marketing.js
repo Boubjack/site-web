@@ -4,7 +4,7 @@
  * sociaux, hashtags, script vidéo, voix-off. Campagnes : Ramadan, Tabaski,
  * Black Friday, promotions saisonnières.
  */
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 const catalog = require('./catalog');
 const { store } = require('../../db/store');
 

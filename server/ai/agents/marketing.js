@@ -3,7 +3,7 @@
  * TikTok, campagnes publicitaires (Ramadan, Tabaski, Black Friday), + emails,
  * SMS et notifications push. Permissions : vendeur/admin.
  */
-const provider = require('../provider/anthropic');
+const provider = require('../provider/llm');
 const marketing = require('../services/marketing');
 const catalog = require('../services/catalog');
 const { store } = require('../../db/store');

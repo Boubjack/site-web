@@ -33,6 +33,40 @@
         <div id="seller-assistant"></div>
       </section>
 
+      <!-- AI CREATIVE STUDIO : Brand Kit + Créer ma campagne -->
+      <section class="panel glass" style="grid-column: 1 / -1;border:1px solid rgba(42,144,255,0.35)">
+        <h3>🎨 Creative Studio <span class="ai-tag">niveau grande marque</span></h3>
+        <p class="sub">Votre identité de marque appliquée automatiquement à toutes les créations. Un clic sur « Créer ma campagne » génère tout votre contenu marketing.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="cs-grid">
+          <!-- Brand Kit -->
+          <div>
+            <h4 style="margin-bottom:10px">🪪 AI Brand Kit</h4>
+            <div class="field"><label>Nom de la marque</label><input id="bk-name" placeholder="Ma boutique" /></div>
+            <div class="field"><label>Positionnement</label><select id="bk-positioning"></select></div>
+            <div class="field"><label>Style graphique</label><select id="bk-style"></select></div>
+            <div class="field"><label>Slogan</label><input id="bk-slogan" placeholder="Votre signature de marque" /></div>
+            <div class="field" style="display:flex;gap:10px">
+              <div style="flex:1"><label>Couleur principale</label><input id="bk-color1" type="color" value="#2a90ff" style="height:42px;padding:4px" /></div>
+              <div style="flex:1"><label>Couleur secondaire</label><input id="bk-color2" type="color" value="#0a5bd8" style="height:42px;padding:4px" /></div>
+            </div>
+            <div class="field"><label>Police</label><input id="bk-font" placeholder="Sora" /></div>
+            <div class="field"><label>Site web</label><input id="bk-website" placeholder="https://…" /></div>
+            <button class="btn btn-ghost btn-sm" id="bk-save">💾 Enregistrer mon Brand Kit</button>
+          </div>
+          <!-- Créer ma campagne -->
+          <div>
+            <h4 style="margin-bottom:10px">⚡ Smart Workflow</h4>
+            <p class="sub" style="margin-top:0">« Créer ma campagne » produit d'un coup : 10 photos · 5 affiches · 3 bannières · 5 Stories · 3 Reels · 3 TikTok · 1 pub · 1 miniature + textes, hashtags et descriptions — au style de votre marque.</p>
+            <div class="field"><label>Produit</label><select id="cs-product"></select></div>
+            <div class="field"><label>Qualité d'export</label>
+              <select id="cs-quality"><option>Standard</option><option>Haute</option><option selected>Ultra</option><option>Maximum</option></select>
+            </div>
+            <button class="btn btn-bleu btn-lg" id="cs-run" style="width:100%">⚡ Créer ma campagne</button>
+            <div id="cs-out" style="display:none;margin-top:14px"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- 4. Générer une annonce IA -->
       <section class="panel glass">
         <h3>📝 Générer une annonce IA</h3>
@@ -58,6 +92,7 @@
           <label><input type="checkbox" id="ph-angles" style="width:auto"> Générer multi-angles (8 vues)</label>
         </div>
         <button class="btn btn-bleu" id="ph-run">✨ Créer le dossier photo pro</button>
+        <button class="btn btn-ghost btn-sm" id="ph-variants" style="margin-left:8px">🎲 Générer 5 variantes</button>
         <pre id="ph-out" style="display:none"></pre>
       </section>
 
@@ -164,11 +199,21 @@
       const mine = items.filter((p) => !p.seller || user.role === 'admin' || p.seller.id === user.id);
       const list = mine.length ? mine : items;
       const options = list.map((p) => `<option value="${p.id}">${EM.esc(p.name)}</option>`).join('');
-      ['v-product', 'm-product', 'ph-product', 'orch-product'].forEach((id) => { document.getElementById(id).innerHTML = options; });
+      ['v-product', 'm-product', 'ph-product', 'orch-product', 'cs-product'].forEach((id) => { document.getElementById(id).innerHTML = options; });
 
       // Options des studios Pro (types de photos, styles…).
       const opts = await EM.api('/api/ai/studio/options');
       document.getElementById('ph-type').innerHTML = opts.photoTypes.map((t) => `<option value="${t.id}">${EM.esc(t.label)}</option>`).join('');
+      document.getElementById('bk-positioning').innerHTML = opts.positioning.map((p) => `<option>${EM.esc(p)}</option>`).join('');
+      document.getElementById('bk-style').innerHTML = opts.graphicStyles.map((s) => `<option>${EM.esc(s)}</option>`).join('');
+
+      // AI Brand Kit — charger l'identité existante puis câbler la sauvegarde.
+      await loadBrandKit();
+      document.getElementById('bk-save').addEventListener('click', (e) => run(e.target, saveBrandKit));
+
+      // Creative Studio — « Créer ma campagne » + « 5 variantes ».
+      document.getElementById('cs-run').addEventListener('click', (e) => run(e.target, createCampaign));
+      document.getElementById('ph-variants').addEventListener('click', (e) => run(e.target, generateVariants));
 
       // Curseur durée vidéo
       const dur = document.getElementById('v-duration');
@@ -302,6 +347,72 @@
           `PROBLÈMES RÉCURRENTS\n${(r.recurringIssues || []).join(', ') || '—'}` +
           (r.recommendation ? `\n\nRECOMMANDATION\n${r.recommendation}` : ''));
       }));
+    }
+
+    // ---------- AI Brand Kit ----------
+    async function loadBrandKit() {
+      try {
+        const { brandKit } = await EM.api('/api/ai/studio/brandkit');
+        document.getElementById('bk-name').value = brandKit.brandName || '';
+        document.getElementById('bk-positioning').value = brandKit.positioning || 'Premium';
+        document.getElementById('bk-style').value = brandKit.graphicStyle || 'Épuré';
+        document.getElementById('bk-slogan').value = brandKit.slogan || '';
+        document.getElementById('bk-font').value = brandKit.font || 'Sora';
+        document.getElementById('bk-website').value = brandKit.website || '';
+        if (brandKit.primaryColors && brandKit.primaryColors[0]) document.getElementById('bk-color1').value = brandKit.primaryColors[0];
+        if (brandKit.primaryColors && brandKit.primaryColors[1]) document.getElementById('bk-color2').value = brandKit.primaryColors[1];
+      } catch { /* défauts */ }
+    }
+
+    async function saveBrandKit() {
+      await EM.api('/api/ai/studio/brandkit', {
+        method: 'PUT',
+        body: {
+          brandName: document.getElementById('bk-name').value,
+          positioning: document.getElementById('bk-positioning').value,
+          graphicStyle: document.getElementById('bk-style').value,
+          slogan: document.getElementById('bk-slogan').value,
+          font: document.getElementById('bk-font').value,
+          website: document.getElementById('bk-website').value,
+          primaryColors: [document.getElementById('bk-color1').value, document.getElementById('bk-color2').value],
+        },
+      });
+      EM.toast('🪪 Brand Kit enregistré — appliqué à toutes vos créations.', 'success');
+    }
+
+    // ---------- Créer ma campagne ----------
+    async function createCampaign() {
+      const r = await EM.api('/api/ai/studio/campaign', {
+        method: 'POST',
+        body: { productId: document.getElementById('cs-product').value, quality: document.getElementById('cs-quality').value },
+      });
+      const t = r.totals;
+      const chip = (n, l) => `<span class="hi-fact" style="font-size:0.8rem;padding:6px 12px">${n} ${l}</span>`;
+      const out = document.getElementById('cs-out');
+      out.style.display = 'block';
+      out.innerHTML =
+        `<div style="color:var(--bleu);font-weight:700;margin-bottom:10px">✅ Campagne « ${EM.esc(r.brandKit.brand)} » — ${t.total} livrables (qualité ${EM.esc(r.quality)})</div>
+         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+           ${chip(t.photos, '📸 photos')}${chip(t.affiches, '🖼️ affiches')}${chip(t.bannieres, '📐 bannières')}
+           ${chip(t.stories, '📲 Stories')}${chip(t.reels, '🎞️ Reels')}${chip(t.tiktoks, '🎵 TikTok')}
+           ${chip(t.publicite, '🎬 pub')}${chip(t.miniature, '🖥️ miniature')}
+         </div>
+         <div style="font-size:0.84rem;color:var(--gris)"><b>Textes générés</b> — Slogan : « ${EM.esc(r.deliverables.textes.slogan)} »<br>
+           Hashtags : ${EM.esc(r.deliverables.textes.hashtags.join(' '))}<br>CTA : ${EM.esc(r.deliverables.textes.cta)}</div>
+         <div style="font-size:0.8rem;color:var(--text-3);margin-top:10px">${EM.esc(r.note)}</div>`;
+      EM.toast(`⚡ Campagne générée : ${t.total} contenus au style de votre marque !`, 'success');
+    }
+
+    // ---------- Générer 5 variantes ----------
+    async function generateVariants() {
+      const r = await EM.api('/api/ai/studio/photo/variants', {
+        method: 'POST',
+        body: { productId: document.getElementById('ph-product').value, photoType: document.getElementById('ph-type').value, resolution: document.getElementById('ph-res').value, count: 5 },
+      });
+      show('ph-out',
+        `5 VARIANTES PHOTO (angle · lumière · scène · décor différents)\n════════════════════════════════════════════\n` +
+        r.variants.map((v) => `Variante ${v.index} — ${v.resolutionLabel}\n  • Angle      : ${v.angle}\n  • Lumière    : ${v.lighting}\n  • Composition: ${v.composition}\n  • Décor      : ${v.decor}`).join('\n\n') +
+        (r.brandKit ? `\n\nIdentité appliquée : ${r.brandKit.brand} · ${r.brandKit.positioning}` : ''));
     }
 
     function summarizeStep(st) {

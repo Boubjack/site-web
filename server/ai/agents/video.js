@@ -37,11 +37,21 @@ const STYLES = {
 const FORMATS = {
   tiktok: { ratio: '9:16', defaultDuration: 20, platform: 'TikTok' },
   instagram: { ratio: '9:16', defaultDuration: 15, platform: 'Instagram' },
+  'story-instagram': { ratio: '9:16', defaultDuration: 15, platform: 'Story Instagram' },
+  'story-facebook': { ratio: '9:16', defaultDuration: 15, platform: 'Story Facebook' },
   facebook: { ratio: '1:1', defaultDuration: 20, platform: 'Facebook' },
   youtube: { ratio: '16:9', defaultDuration: 30, platform: 'YouTube' },
+  shorts: { ratio: '9:16', defaultDuration: 30, platform: 'YouTube Shorts' },
   snapchat: { ratio: '9:16', defaultDuration: 15, platform: 'Snapchat' },
+  whatsapp: { ratio: '9:16', defaultDuration: 30, platform: 'WhatsApp Status' },
+  publicite: { ratio: '16:9', defaultDuration: 30, platform: 'Publicité' },
+  presentation: { ratio: '16:9', defaultDuration: 45, platform: 'Présentation produit' },
   catalogue: { ratio: '16:9', defaultDuration: 30, platform: 'Catalogue' },
 };
+
+// Effets appliqués automatiquement au montage (cinématographiques).
+const VIDEO_EFFECTS = ['effets lumineux', 'transitions premium', 'particules', 'profondeur de champ', 'flou cinématique', 'ralenti', 'accéléré', 'animations texte', 'animation du logo'];
+const MUSIC_STYLES = ['Luxe', 'Premium', 'Streetwear', 'Sport', 'Élégant', 'Minimaliste', 'Dynamique'];
 
 function clampResolution(requested) {
   const cap = config.media.videoMaxResolution || '4k';
@@ -149,9 +159,11 @@ async function buildProductionPlan(input, ctx) {
     cameraMoves: [...new Set(scenes.map((s) => s.camera))],
     lighting: [...new Set(scenes.map((s) => s.lighting))],
     animations: [...new Set(scenes.map((s) => s.animation))],
-    music: { style, track: (STYLES[style] || STYLES.premium).music, provider: config.media.musicProvider },
+    effects: VIDEO_EFFECTS,
+    music: { style, musicStyle: input.musicStyle || null, track: (STYLES[style] || STYLES.premium).music, provider: config.media.musicProvider, syncedToBeat: true },
     voiceOver: voiceOver({ product, style, gender: input.voiceGender, lang: input.lang }),
     edit: editPlan({ scenes, style }),
+    brandKit: input.brandKit || null,
     product: product ? { name: product.name } : null,
   };
 }
@@ -203,4 +215,8 @@ module.exports = {
   CAMERA_MOVES,
   LIGHTING,
   PRODUCT_ANIMATIONS,
+  VIDEO_EFFECTS,
+  MUSIC_STYLES,
+  FPS,
+  RESOLUTIONS,
 };

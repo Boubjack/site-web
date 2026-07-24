@@ -531,6 +531,7 @@ select option { background: var(--noir-2); }
   .ai-search { padding-left: 14px; gap: 6px; }
   .ai-search input { min-width: 0; font-size: 0.92rem; padding: 11px 4px; }
   .ai-search .btn { padding-inline: 15px; font-size: 0.85rem; white-space: nowrap; }
+  #cs-grid { grid-template-columns: 1fr !important; }
 }
 
 /* ---------- Préférence de mouvement réduit ---------- */

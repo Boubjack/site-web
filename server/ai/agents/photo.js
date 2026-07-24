@@ -61,16 +61,44 @@ const PHOTO_TYPES = {
   publicitaire: { label: 'Publicitaire', background: 'décor conceptuel', lighting: 'éclairage dramatique', composition: 'accroche visuelle forte', mood: 'impactant' },
   editoriale: { label: 'Éditoriale', background: 'décor narratif', lighting: 'lumière contrastée', composition: 'cadrage magazine', mood: 'artistique' },
   magazine: { label: 'Magazine', background: 'set couverture', lighting: 'beauty dish', composition: 'espace pour titres', mood: 'premium presse' },
+  instagram: { label: 'Instagram', background: 'décor tendance lumineux', lighting: 'lumière flatteuse', composition: 'carré/vertical, produit héroïsé', mood: 'social premium', ratio: '4:5' },
+  facebook: { label: 'Facebook', background: 'décor clair engageant', lighting: 'lumière naturelle', composition: 'espace pour accroche', mood: 'social', ratio: '1:1' },
+  tiktok: { label: 'TikTok', background: 'décor punchy coloré', lighting: 'néons / lumière vive', composition: 'vertical plein cadre', mood: 'énergique', ratio: '9:16' },
+  banniere: { label: 'Bannière', background: 'décor panoramique', lighting: 'lumière large homogène', composition: 'format large, zone de texte à gauche', mood: 'impactant', ratio: '16:9' },
+  couverture: { label: 'Couverture', background: 'set héro premium', lighting: 'clé douce + contour', composition: 'large négatif haut pour titre', mood: 'prestige', ratio: '16:9' },
 };
 
 const MANNEQUIN_OPTIONS = {
   gender: ['homme', 'femme', 'enfant'],
+  ethnicity: ['africain', 'européen', 'asiatique', 'moyen-oriental'],
   morphology: ['élancée', 'athlétique', 'standard', 'grande taille'],
   skinTone: ['claire', 'métisse', 'foncée', 'ébène'],
   hair: ['courts', 'longs', 'tressés', 'afro', 'voilée'],
   expression: ['neutre', 'sourire', 'confiant', 'sérieux'],
   posture: ['debout de face', 'de profil', 'en marche', 'assis', '3/4 dynamique'],
 };
+
+// Générateur d'arrière-plans : décors nommés par univers produit.
+const BACKGROUNDS = {
+  mode: ['studio blanc', 'studio noir', 'rue urbaine', 'appartement moderne', 'café', 'boutique de luxe'],
+  beaute: ['marbre', 'verre', 'eau', 'fleurs'],
+  technologie: ['bureau premium', 'fond futuriste', 'néons'],
+  neutre: ['studio blanc infini', 'aplat de couleur', 'dégradé doux premium'],
+};
+
+// Choix automatique de l'univers de décor selon la catégorie/type produit.
+function backgroundUniverseFor(product) {
+  const text = catalog.normalize([product.name, product.category, product.subcategory].filter(Boolean).join(' '));
+  if (/parfum|beaut|cosmet|creme|crème|soin|maquillage/.test(text)) return 'beaute';
+  if (/tel|smartphone|ecouteur|casque|tech|montre connect|powerbank|ordi|gadget|electro/.test(text)) return 'technologie';
+  if (/boubou|bazin|wax|pagne|robe|costume|tenue|chaussure|sac|sneaker|mode|vetement|habit/.test(text)) return 'mode';
+  return 'neutre';
+}
+
+function backgroundsFor(product) {
+  const universe = backgroundUniverseFor(product);
+  return { universe, options: BACKGROUNDS[universe], recommended: BACKGROUNDS[universe][0] };
+}
 
 // Génération multi-angles à partir d'une seule photo.
 const ANGLES = [
@@ -133,19 +161,45 @@ function buildMannequin(opts = {}) {
   const pick = (arr, v) => (arr.includes(v) ? v : arr[0]);
   return {
     gender: pick(MANNEQUIN_OPTIONS.gender, opts.gender),
+    ethnicity: pick(MANNEQUIN_OPTIONS.ethnicity, opts.ethnicity || 'africain'),
     age: opts.age || (opts.gender === 'enfant' ? 8 : 28),
     morphology: pick(MANNEQUIN_OPTIONS.morphology, opts.morphology),
     skinTone: pick(MANNEQUIN_OPTIONS.skinTone, opts.skinTone || 'métisse'),
     hair: pick(MANNEQUIN_OPTIONS.hair, opts.hair),
     expression: pick(MANNEQUIN_OPTIONS.expression, opts.expression),
     posture: pick(MANNEQUIN_OPTIONS.posture, opts.posture),
-    note: 'Mannequin virtuel réutilisable : les vêtements peuvent être changés sans modifier le mannequin.',
+    note: 'Mannequin virtuel réutilisable : les vêtements peuvent être changés sans modifier le mannequin. Le produit est porté naturellement.',
   };
 }
 
 function multiAnglePlan(selection) {
   const wanted = Array.isArray(selection) && selection.length ? selection : ANGLES.map((a) => a.id);
   return ANGLES.filter((a) => wanted.includes(a.id));
+}
+
+// Palette de lumières et de mises en scène pour varier les propositions.
+const LIGHT_SETUPS = ['éclairage 3 points doux', 'contre-jour dramatique', 'golden hour chaleureuse', 'clair-obscur premium', 'lumière naturelle fenêtre'];
+const COMPOSITIONS = ['produit centré', 'règle des tiers, produit décalé', 'gros plan macro', 'vue en plongée', 'vue 3/4 dynamique'];
+
+/**
+ * « Générer N variantes » : N propositions distinctes, chacune avec un angle,
+ * une lumière, une mise en scène et un décor différents. (Spec par défaut : 5.)
+ */
+function variants(product, { count = 5, photoType = 'catalogue-ecommerce', resolution = '4k' } = {}) {
+  const bg = backgroundsFor(product);
+  const angles = ANGLES;
+  const type = PHOTO_TYPES[photoType] ? photoType : 'catalogue-ecommerce';
+  const res = clampResolution(resolution);
+  return Array.from({ length: Math.max(1, Math.min(10, count)) }, (_, i) => ({
+    index: i + 1,
+    angle: angles[i % angles.length].label,
+    lighting: LIGHT_SETUPS[i % LIGHT_SETUPS.length],
+    composition: COMPOSITIONS[i % COMPOSITIONS.length],
+    decor: bg.options[i % bg.options.length],
+    photoType: type,
+    resolution: res,
+    resolutionLabel: RESOLUTIONS[res].label,
+  }));
 }
 
 /** Note de direction artistique (LLM si disponible, sinon règle). */
@@ -191,8 +245,10 @@ async function buildProductionSpec(input, ctx) {
     staging,
     mannequin,
     angles,
+    backgrounds: backgroundsFor(product),
     enhancementPipeline: ENHANCE_PIPELINE,
     consistency: CONSISTENCY,
+    brandKit: input.brandKit || null, // guide de style injecté par le Creative Studio
     direction,
     product: { name: product.name, category: product.category },
   };
@@ -224,6 +280,14 @@ async function run(input, ctx) {
     return { staging: stagingFor(product || {}) };
   }
   if (action === 'mannequin') return { mannequin: buildMannequin(input.mannequin || input), options: MANNEQUIN_OPTIONS };
+  if (action === 'backgrounds') {
+    const product = input.productId ? store.getById('products', input.productId) : { name: input.productName, category: input.category };
+    return { backgrounds: backgroundsFor(product || {}), library: BACKGROUNDS };
+  }
+  if (action === 'variants') {
+    const product = input.productId ? store.getById('products', input.productId) : { name: input.productName || 'produit', category: input.category };
+    return { variants: variants(product || {}, { count: input.count || 5, photoType: input.photoType, resolution: input.resolution }), brandKit: input.brandKit || null };
+  }
   if (action === 'multiangle') return { angles: multiAnglePlan(input.angles), source: 'une seule photo suffit' };
   if (action === 'tryon') {
     // Architecture d'essayage virtuel (prête pour un moteur try-on).
@@ -264,8 +328,11 @@ module.exports = {
   stagingFor,
   buildMannequin,
   multiAnglePlan,
+  backgroundsFor,
+  variants,
   PHOTO_TYPES,
   RESOLUTIONS,
   MANNEQUIN_OPTIONS,
+  BACKGROUNDS,
   ANGLES,
 };

@@ -16,7 +16,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const COLLECTIONS = [
   'users', 'products', 'orders', 'reviews',
   'events', 'aiMemory', 'mediaJobs', 'supportTickets',
-  'aiConversations', 'moderationFlags',
+  'aiConversations', 'moderationFlags', 'brandKits',
 ];
 
 const cache = {};

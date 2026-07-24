@@ -61,6 +61,8 @@ permissionné par rôle, découvrable par mots-clés :
 | `personalization` | public | Page d'accueil différente par client |
 | `translation` | public | FR/EN (bambara préparé) |
 | `recommendation` | public | Recommandations, produits complémentaires, paniers complets |
+| `brain` | admin | **Marketplace Brain** — score de santé /100, opportunités & risques |
+| `ceo` `cfo` `cmo` `coo` `cto` | admin | **Comité de direction IA** — synthèse exécutive, finance, marketing, opérations, système |
 
 **Ajouter un agent** = créer `agents/<nom>.js` (contrat : `id, name, allowedRoles,
 keywords, run, tool?`) et l'enregistrer dans `agents/index.js`. L'orchestrateur,
@@ -74,9 +76,47 @@ traitement, storyboard, plans caméra, voix-off, musique, cohérence visuelle). 
 **rendu des pixels 4K/8K** est délégué à un moteur externe branché via `.env`
 (`IMAGE_PROVIDER`, `VIDEO_PROVIDER`, `TTS_PROVIDER`, `MUSIC_PROVIDER`). Sans
 moteur, les studios livrent le **dossier de production complet** (mode
-spécification) + un job de rendu ; brancher un moteur (Replicate, Stability,
-Runway, Sora…) active le rendu réel **sans changer le reste du code**
-(adaptateurs dans `server/ai/studio/jobs.js`).
+spécification) + un job de rendu ; brancher un moteur **open source** (FLUX.1,
+LTX-Video/Wan 2.2, Real-ESRGAN, RMBG-2.0, YOLO, PaddleOCR…) active le rendu réel
+**sans changer le reste du code** (adaptateurs dans `server/ai/studio/jobs.js`).
+
+### AI Creative Studio (espace vendeur)
+
+Studio créatif complet piloté par l'identité de marque du vendeur :
+
+- **AI Brand Kit** — nom, logo, couleurs, police, style, slogan, positionnement.
+  Toutes les créations respectent automatiquement cette identité.
+- **Photo Studio** — types étendus (catalogue, premium, studio, lifestyle, luxe,
+  Instagram/Facebook/TikTok, bannière, pub, couverture), **« Générer 5
+  variantes »** (angle/lumière/scène/décor différents), générateur
+  d'arrière-plans adaptatif, mannequins virtuels (ethnie, âge, morphologie).
+- **Video Studio** — formats réseaux (Stories, TikTok, Shorts, Snapchat,
+  WhatsApp, pub, présentation), caméra, effets, voix-off FR/EN (bambara préparé),
+  musique par style, montage calé sur le rythme.
+- **Ad Generator + réseaux sociaux** — affiches, flyers, bannières, carrousels,
+  miniatures + slogans/hashtags/CTA ; déclinaisons par plateforme
+  (dimensions/durée/résolution) ; export PNG/JPG/WEBP, MP4/MOV.
+- **« Créer ma campagne »** (Smart Workflow) — un clic produit tout le pack
+  marketing (10 photos, 5 affiches, 3 bannières, 5 Stories, 3 Reels, 3 TikTok,
+  1 pub, 1 miniature + textes), 100 % cohérent avec le Brand Kit.
+
+Endpoints : `/api/ai/studio/{brandkit,photo,video,photo/variants,backgrounds,
+social,ad-kit,campaign,options}`.
+
+### Découverte & pilotage
+
+- **Stories IA / Vitrine vivante / Hover intelligent** (`/api/ai/{stories,
+  showcase,hover/:id}`) — mise en avant auto (nouveautés, tendances, bons plans),
+  sections d'accueil ré-ordonnées en direct, info-bulle IA au survol des cartes.
+- **Recherche sémantique compatible FAISS** — index cosinus local (pur-JS,
+  gratuit) ; repli de compréhension quand la recherche par mots-clés échoue.
+- **Marketplace Brain + comité de direction IA** (`/api/ai/{brain,exec/:role}`).
+
+### Fournisseurs gratuits / open source
+
+Fournisseur de texte unifié (`LLM_PROVIDER=auto`) : **OpenRouter** (modèles
+`:free`), **Ollama** (local), ou Anthropic — sinon **moteur local** gratuit et
+hors ligne. Détails et audit complet dans [`docs/AUDIT_IA.md`](docs/AUDIT_IA.md).
 
 ## Trois assistants IA distincts
 

@@ -17,37 +17,55 @@ const log = createLogger('ai:studio');
 const imageProviders = {
   none: {
     async run(job) {
+      const res = job.spec && job.spec.resolution ? String(job.spec.resolution).toUpperCase() : '4K';
       return {
         rendered: false,
         mode: 'specification',
         message: `Aucun moteur d'image configuré (IMAGE_PROVIDER=none). ` +
-          `Dossier de production prêt en ${job.spec.resolution.toUpperCase()} — ` +
-          `branchez un moteur pour générer les pixels.`,
+          `Dossier de production prêt en ${res} — ` +
+          `branchez un moteur (ex. FLUX.1) pour générer les pixels.`,
       };
     },
   },
-  // replicate: { async run(job) { /* appel API réel → { rendered:true, outputUrl } */ } },
-  // stability: { async run(job) { ... } },
+  // flux / sdxl / replicate / stability : { async run(job) { /* → { rendered:true, outputUrl } */ } },
 };
 
 const videoProviders = {
   none: {
     async run(job) {
+      const res = job.spec && job.spec.resolution ? String(job.spec.resolution).toUpperCase() : '4K';
+      const fps = job.spec && job.spec.fps ? job.spec.fps : 30;
       return {
         rendered: false,
         mode: 'specification',
         message: `Aucun moteur vidéo configuré (VIDEO_PROVIDER=none). ` +
-          `Storyboard et plan de production prêts en ${job.spec.resolution.toUpperCase()} ` +
-          `${job.spec.fps} FPS — branchez un moteur pour générer la vidéo.`,
+          `Storyboard et plan de production prêts en ${res} ${fps} FPS — ` +
+          `branchez un moteur (ex. LTX-Video/Wan 2.2) pour générer la vidéo.`,
       };
     },
   },
-  // runway: { async run(job) { ... } },
-  // sora:   { async run(job) { ... } },
+  // ltx / wan / runway / pika : { async run(job) { ... } },
+};
+
+// Campagne complète (« Créer ma campagne ») : pack multi-livrables.
+const campaignProviders = {
+  none: {
+    async run(job) {
+      const t = (job.spec && job.spec.totals) || {};
+      return {
+        rendered: false,
+        mode: 'specification',
+        message: `Pack de campagne prêt (${t.total || 0} livrables) — mode spécification. ` +
+          `Branchez les moteurs image/vidéo (.env) pour produire les fichiers finaux.`,
+        totals: t,
+      };
+    },
+  },
 };
 
 function providerFor(kind) {
   if (kind === 'video') return videoProviders[config.media.videoProvider] || videoProviders.none;
+  if (kind === 'campaign') return campaignProviders.none;
   return imageProviders[config.media.imageProvider] || imageProviders.none;
 }
 

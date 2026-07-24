@@ -16,6 +16,8 @@ const assistants = require('./assistants'); // registre d'assistants : shopping,
 const agents = require('./agents');          // registre d'agents spécialisés
 const orchestrator = require('./orchestrator');
 const studioJobs = require('./studio/jobs');
+const brandkit = require('./studio/brandkit');
+const creative = require('./studio/creative');
 const photoAgent = require('./agents/photo');
 const videoAgent = require('./agents/video');
 const recommender = require('./services/recommender');
@@ -231,16 +233,63 @@ function assertOwnsProduct(req) {
   }
 }
 
-// AI Photo Pro — action: produce | staging | mannequin | multiangle | tryon
+/** Injecte le guide de style du Brand Kit du vendeur dans la création. */
+function withBrandKit(req) {
+  const sellerId = req.user.role === 'admin' ? (req.body.sellerId || req.user.id) : req.user.id;
+  return { ...(req.body || {}), brandKit: brandkit.styleGuide(brandkit.getForSeller(sellerId)) };
+}
+
+// AI Photo Pro — action: produce | variants | staging | mannequin | backgrounds | multiangle | tryon
 router.post('/studio/photo', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
   assertOwnsProduct(req);
-  res.status(202).json(await photoAgent.run(req.body || {}, { user: req.user }));
+  res.status(202).json(await photoAgent.run(withBrandKit(req), { user: req.user }));
 }));
 
 // AI Video Pro — le vendeur choisit produit + style + durée
 router.post('/studio/video', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
   assertOwnsProduct(req);
-  res.status(202).json(await videoAgent.run(req.body || {}, { user: req.user }));
+  res.status(202).json(await videoAgent.run(withBrandKit(req), { user: req.user }));
+}));
+
+/* ---- AI Brand Kit (identité visuelle du vendeur) ---- */
+router.get('/studio/brandkit', requireRole('seller', 'admin'), (req, res) => {
+  const sellerId = req.user.role === 'admin' ? (req.query.sellerId || req.user.id) : req.user.id;
+  res.json({ brandKit: brandkit.getForSeller(sellerId), options: { positioning: brandkit.POSITIONING, graphicStyles: brandkit.GRAPHIC_STYLES } });
+});
+
+router.put('/studio/brandkit', requireRole('seller', 'admin'), asyncHandler(async (req, res) => {
+  const sellerId = req.user.role === 'admin' ? (req.body.sellerId || req.user.id) : req.user.id;
+  res.json({ brandKit: brandkit.save(sellerId, req.body || {}) });
+}));
+
+/* ---- Creative Studio : variantes, décors, réseaux, pub, campagne ---- */
+router.post('/studio/photo/variants', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
+  assertOwnsProduct(req);
+  res.json(await photoAgent.run({ ...withBrandKit(req), action: 'variants', count: req.body.count || 5 }, { user: req.user }));
+}));
+
+router.post('/studio/backgrounds', requireRole('seller', 'admin'), asyncHandler(async (req, res) => {
+  assertOwnsProduct(req);
+  res.json(await photoAgent.run({ ...(req.body || {}), action: 'backgrounds' }, { user: req.user }));
+}));
+
+router.post('/studio/social', requireRole('seller', 'admin'), asyncHandler(async (req, res) => {
+  assertOwnsProduct(req);
+  const sellerId = req.user.role === 'admin' ? (req.body.sellerId || req.user.id) : req.user.id;
+  res.json(creative.socialVersions(req.body || {}, sellerId));
+}));
+
+router.post('/studio/ad-kit', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
+  assertOwnsProduct(req);
+  const sellerId = req.user.role === 'admin' ? (req.body.sellerId || req.user.id) : req.user.id;
+  res.json(await creative.adKit(req.body || {}, sellerId));
+}));
+
+// AI Smart Workflow — « Créer ma campagne » (pack complet, identité respectée).
+router.post('/studio/campaign', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
+  assertOwnsProduct(req);
+  const sellerId = req.user.role === 'admin' ? (req.body.sellerId || req.user.id) : req.user.id;
+  res.status(202).json(await creative.fullCampaign(req.body || {}, sellerId));
 }));
 
 // Référentiels (types de photos, styles vidéo, options mannequin…) pour l'UI.
@@ -249,10 +298,19 @@ router.get('/studio/options', requireRole('seller', 'admin'), (_req, res) => {
     photoTypes: Object.entries(photoAgent.PHOTO_TYPES).map(([id, v]) => ({ id, label: v.label })),
     resolutions: Object.keys(photoAgent.RESOLUTIONS),
     mannequin: photoAgent.MANNEQUIN_OPTIONS,
+    backgrounds: photoAgent.BACKGROUNDS,
     angles: photoAgent.ANGLES,
     videoStyles: Object.keys(videoAgent.STYLES),
-    videoFormats: Object.keys(videoAgent.FORMATS),
+    videoFormats: Object.entries(videoAgent.FORMATS).map(([id, v]) => ({ id, label: v.platform, ratio: v.ratio })),
+    fps: videoAgent.FPS,
     cameraMoves: videoAgent.CAMERA_MOVES,
+    videoEffects: videoAgent.VIDEO_EFFECTS,
+    musicStyles: videoAgent.MUSIC_STYLES,
+    adFormats: Object.entries(creative.AD_FORMATS).map(([id, v]) => ({ id, label: v.label })),
+    socialTargets: Object.entries(creative.SOCIAL_TARGETS).map(([id, v]) => ({ id, label: v.platform, kind: v.kind })),
+    export: creative.EXPORT,
+    positioning: brandkit.POSITIONING,
+    graphicStyles: brandkit.GRAPHIC_STYLES,
   });
 });
 

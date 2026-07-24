@@ -37,6 +37,20 @@
           <div id="chart-area"></div>
         </section>
 
+        <!-- AI Tendances -->
+        <section class="panel glass">
+          <h3>🔥 AI Tendances</h3>
+          <p class="sub">Produits/catégories/recherches populaires + recommandations de mise en avant.</p>
+          <div id="trends"></div>
+        </section>
+
+        <!-- AI Modération -->
+        <section class="panel glass">
+          <h3>🧹 AI Modération</h3>
+          <p class="sub">File des contenus signalés automatiquement (interdit, contrefaçon, spam, offensant).</p>
+          <div id="moderation"></div>
+        </section>
+
         <!-- 11. IA Sécurité -->
         <section class="panel glass">
           <h3>🛡️ IA Sécurité & fraude</h3>
@@ -118,6 +132,24 @@
 
       // 9. Assistant ADMIN — E-Market Operator AI (panneau intégré).
       EMAssistant.mountPanel(document.getElementById('operator-assistant'), 'operator');
+
+      // AI Tendances
+      try {
+        const t = await EM.api('/api/ai/trends');
+        document.getElementById('trends').innerHTML =
+          `<div style="margin-bottom:10px"><b>Recommandations</b><ul style="margin:6px 0 0 18px;color:var(--gris);font-size:0.85rem">${t.recommendations.map((r) => `<li>${EM.esc(r)}</li>`).join('')}</ul></div>` +
+          `<div style="font-size:0.83rem"><b>Produits populaires :</b> ${t.popularProducts.slice(0, 3).map((p) => EM.esc(p.name)).join(' · ') || '—'}</div>` +
+          `<div style="font-size:0.83rem;margin-top:4px"><b>Recherches :</b> ${(t.popularSearches || []).slice(0, 4).map((s) => EM.esc(s.query)).join(' · ') || '—'}</div>`;
+      } catch { document.getElementById('trends').textContent = 'Indisponible.'; }
+
+      // AI Modération
+      try {
+        const m = await EM.api('/api/ai/moderation/flags');
+        document.getElementById('moderation').innerHTML = m.flags.length
+          ? m.flags.slice(0, 8).map((f) => `<div class="risk-row"><span class="risk-badge ${f.level === 'blocked' ? 'risk-rouge' : 'risk-orange'}">${f.level}</span>
+              <div class="who">${EM.esc(f.entityType)} — ${EM.esc((f.reasons || []).join(', '))}<div class="why">${EM.esc(f.excerpt || '')}</div></div></div>`).join('')
+          : '<p style="color:var(--vert)">✅ Aucun contenu signalé.</p>';
+      } catch { document.getElementById('moderation').textContent = 'Indisponible.'; }
 
       // Tendances & prévisions — graphiques.
       const CHARTS = [

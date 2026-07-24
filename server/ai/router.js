@@ -11,13 +11,16 @@ const { rateLimit } = require('../middleware/rateLimit');
 const provider = require('./provider/anthropic');
 const config = require('../config');
 
-const assistants = require('./assistants'); // registre : shopping, seller, operator
+const assistants = require('./assistants'); // registre d'assistants : shopping, seller, operator
+const agents = require('./agents');          // registre d'agents spécialisés
+const orchestrator = require('./orchestrator');
+const studioJobs = require('./studio/jobs');
+const photoAgent = require('./agents/photo');
+const videoAgent = require('./agents/video');
 const recommender = require('./services/recommender');
 const search = require('./services/search');
 const seller = require('./services/seller');
 const vision = require('./services/vision');
-const photoStudio = require('./services/photoStudio');
-const videoStudio = require('./services/videoStudio');
 const marketing = require('./services/marketing');
 const fraud = require('./services/fraud');
 const analytics = require('./services/analytics');
@@ -171,8 +174,18 @@ router.post('/seller/listing', requireRole('seller', 'admin'), heavyLimit, async
 router.post('/seller/listing/publish', requireRole('seller', 'admin'), asyncHandler(async (req, res) => {
   const { listing, extra } = req.body;
   if (!listing || !listing.title) throw new ApiError(400, 'listing généré requis.');
+
+  // AI Modération : vérifie titre + description avant mise en ligne, signale si besoin.
+  const moderation = require('./agents/moderation');
+  const verdict = moderation.moderateText(`${listing.title}\n${listing.longDescription || ''}`);
+  if (verdict.level === 'blocked') {
+    throw new ApiError(422, 'Contenu refusé par la modération.', verdict.reasons);
+  }
   const product = seller.publishListing(req.user.id, listing, extra || {});
-  res.status(201).json({ product });
+  if (verdict.status === 'flag') {
+    moderation.flag({ entityType: 'product', entityId: product.id, ownerId: req.user.id, verdict, excerpt: listing.title });
+  }
+  res.status(201).json({ product, moderation: verdict });
 }));
 
 /* ------------------------------------------------------------------ */
@@ -197,36 +210,51 @@ router.post('/vision/search', heavyLimit, asyncHandler(async (req, res) => {
 }));
 
 /* ------------------------------------------------------------------ */
-/* 6 & 7. Studios photo et vidéo                                       */
+/* AI Photo Pro / AI Video Pro (studios cinématographiques)            */
 /* ------------------------------------------------------------------ */
+
+/** Vérifie que le produit référencé appartient au vendeur (ou admin). */
+function assertOwnsProduct(req) {
+  if (!req.body.productId) return;
+  const { store } = require('../db/store');
+  const p = store.getById('products', req.body.productId);
+  if (!p) throw new ApiError(404, 'Produit introuvable.');
+  if (req.user.role !== 'admin' && p.sellerId !== req.user.id) {
+    throw new ApiError(403, 'Ce produit ne fait pas partie de votre boutique.');
+  }
+}
+
+// AI Photo Pro — action: produce | staging | mannequin | multiangle | tryon
 router.post('/studio/photo', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
-  const job = await photoStudio.createJob({
-    userId: req.user.id,
-    productName: req.body.productName,
-    imageRef: req.body.imageRef,
-    operations: req.body.operations,
-    style: req.body.style || null,
-  });
-  res.status(202).json({ job });
+  assertOwnsProduct(req);
+  res.status(202).json(await photoAgent.run(req.body || {}, { user: req.user }));
 }));
 
+// AI Video Pro — le vendeur choisit produit + style + durée
 router.post('/studio/video', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
-  const job = await videoStudio.createJob({
-    userId: req.user.id,
-    productId: req.body.productId,
-    description: String(req.body.description || '').slice(0, 1000),
-    format: req.body.format || 'tiktok',
-    photos: Array.isArray(req.body.photos) ? req.body.photos.slice(0, 10) : [],
-  });
-  res.status(202).json({ job });
+  assertOwnsProduct(req);
+  res.status(202).json(await videoAgent.run(req.body || {}, { user: req.user }));
 }));
+
+// Référentiels (types de photos, styles vidéo, options mannequin…) pour l'UI.
+router.get('/studio/options', requireRole('seller', 'admin'), (_req, res) => {
+  res.json({
+    photoTypes: Object.entries(photoAgent.PHOTO_TYPES).map(([id, v]) => ({ id, label: v.label })),
+    resolutions: Object.keys(photoAgent.RESOLUTIONS),
+    mannequin: photoAgent.MANNEQUIN_OPTIONS,
+    angles: photoAgent.ANGLES,
+    videoStyles: Object.keys(videoAgent.STYLES),
+    videoFormats: Object.keys(videoAgent.FORMATS),
+    cameraMoves: videoAgent.CAMERA_MOVES,
+  });
+});
 
 router.get('/studio/jobs', requireRole('seller', 'admin'), (req, res) => {
-  res.json({ jobs: photoStudio.listJobs(req.user.id, req.query.kind) });
+  res.json({ jobs: studioJobs.listJobs(req.user.id, req.query.kind) });
 });
 
 router.get('/studio/jobs/:id', requireRole('seller', 'admin'), (req, res) => {
-  const job = photoStudio.getJob(req.params.id);
+  const job = studioJobs.getJob(req.params.id);
   if (!job || job.userId !== req.user.id) return res.status(404).json({ error: 'Job introuvable.' });
   res.json({ job });
 });
@@ -241,6 +269,79 @@ router.post('/marketing/kit', requireRole('seller', 'admin'), heavyLimit, asyncH
     tone: String(req.body.tone || 'énergique').slice(0, 50),
   });
   res.json({ kit, campaigns: Object.keys(marketing.CAMPAIGNS) });
+}));
+
+/* ================================================================== */
+/* ORCHESTRATEUR IA + AGENTS SPÉCIALISÉS                               */
+/* ================================================================== */
+
+/** Orchestrateur : reçoit une demande, route vers le(s) agent(s), combine. */
+router.post('/orchestrator', aiLimit, asyncHandler(async (req, res) => {
+  const text = String(req.body.text || '').slice(0, 1000);
+  if (!text.trim()) throw new ApiError(400, 'text est requis.');
+  const result = await orchestrator.handle({ user: req.user || null, text, productId: req.body.productId });
+  res.json(result);
+}));
+
+router.get('/orchestrator/pipelines', (req, res) => {
+  res.json({ pipelines: orchestrator.pipelinesFor(req.user || null) });
+});
+
+/** Liste des agents accessibles selon le rôle. */
+router.get('/agents', (req, res) => {
+  res.json({ agents: agents.listForRole(req.user || null) });
+});
+
+/* ------------------------------------------------------------------ */
+/* AI Personnalisation — page d'accueil différente par client          */
+/* ------------------------------------------------------------------ */
+router.get('/home', (req, res) => {
+  res.json(agents.get('personalization').personalize(req.user ? req.user.id : null));
+});
+
+/* ------------------------------------------------------------------ */
+/* AI Stock — alertes de rupture (limité au vendeur connecté)          */
+/* ------------------------------------------------------------------ */
+router.get('/seller/stock-alerts', requireRole('seller', 'admin'), (req, res) => {
+  const sellerId = req.user.role === 'admin' ? (req.query.sellerId || undefined) : req.user.id;
+  res.json(agents.get('stock').analyze({ sellerId }));
+});
+
+/* ------------------------------------------------------------------ */
+/* AI Analyse des avis — vendeur (ses produits) / admin (tout)         */
+/* ------------------------------------------------------------------ */
+router.get('/reviews/analysis', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
+  const input = {};
+  if (req.query.productId) {
+    if (req.user.role !== 'admin') {
+      const { store } = require('../db/store');
+      const p = store.getById('products', req.query.productId);
+      if (!p || p.sellerId !== req.user.id) throw new ApiError(403, 'Produit hors de votre boutique.');
+    }
+    input.productId = req.query.productId;
+  } else if (req.user.role !== 'admin') {
+    input.sellerId = req.user.id;
+  }
+  res.json(await agents.get('reviews').run(input, { user: req.user }));
+}));
+
+/* ------------------------------------------------------------------ */
+/* AI Tendances — recommandations à l'administrateur                   */
+/* ------------------------------------------------------------------ */
+router.get('/trends', requireRole('admin'), asyncHandler(async (req, res) => {
+  res.json(await agents.get('trends').run({}, { user: req.user }));
+}));
+
+/* ------------------------------------------------------------------ */
+/* AI Modération — file de signalements + vérification manuelle        */
+/* ------------------------------------------------------------------ */
+router.get('/moderation/flags', requireRole('admin'), (_req, res) => {
+  const { store } = require('../db/store');
+  res.json({ flags: store.find('moderationFlags', () => true).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1)) });
+});
+
+router.post('/moderation/check', requireRole('admin'), heavyLimit, asyncHandler(async (req, res) => {
+  res.json(await agents.get('moderation').run(req.body || {}, { user: req.user }));
 }));
 
 /* ------------------------------------------------------------------ */
@@ -268,15 +369,20 @@ router.post('/translate', aiLimit, asyncHandler(async (req, res) => {
 }));
 
 /* ------------------------------------------------------------------ */
-/* 14. Mémoire IA (consultable et effaçable par l'utilisateur)         */
+/* 14. Mémoire IA — SÉPARÉE par assistant (namespace)                  */
+/*   ?namespace=shopping|seller|operator ; consultable et effaçable.    */
 /* ------------------------------------------------------------------ */
+const MEMORY_NS = { client: 'shopping', seller: 'seller', admin: 'operator' };
+
 router.get('/memory', requireAuth, (req, res) => {
-  res.json({ profile: memory.profileFor(req.user.id) });
+  const ns = req.query.namespace || MEMORY_NS[req.user.role] || 'shopping';
+  res.json({ namespace: ns, profile: memory.profileFor(req.user.id, ns) });
 });
 
 router.delete('/memory', requireAuth, (req, res) => {
-  memory.forget(req.user.id);
-  res.json({ ok: true, message: 'Votre mémoire IA a été effacée.' });
+  const ns = req.query.namespace || MEMORY_NS[req.user.role] || 'shopping';
+  memory.forget(req.user.id, ns);
+  res.json({ ok: true, message: `Mémoire « ${ns} » effacée.` });
 });
 
 module.exports = router;

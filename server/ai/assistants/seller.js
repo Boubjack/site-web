@@ -11,10 +11,14 @@
 const { store } = require('../../db/store');
 const catalog = require('../services/catalog');
 const analytics = require('../services/analytics');
+const memory = require('../services/memory');
 const sellerService = require('../services/seller');
 const marketing = require('../services/marketing');
-const photoStudio = require('../services/photoStudio');
-const videoStudio = require('../services/videoStudio');
+const photoAgent = require('../agents/photo');
+const videoAgent = require('../agents/video');
+const stockAgent = require('../agents/stock');
+const reviewsAgent = require('../agents/reviews');
+const orchestrator = require('../orchestrator');
 
 const SYSTEM_PROMPT = `Tu es E-Market Seller Assistant, le coach commercial des vendeurs d'E-Market
 (marketplace ouest-africaine, prix en FCFA, siège Bamako).
@@ -138,45 +142,76 @@ function buildTools() {
     {
       def: {
         name: 'create_video_ad',
-        description: 'Génère le storyboard d\'une vidéo publicitaire pour un produit du vendeur (TikTok, Instagram ou catalogue).',
+        description: 'AI Video Pro : génère un plan de production vidéo publicitaire cinématographique (scénario, storyboard, plans caméra, éclairage, animations, voix-off, musique, montage) pour un produit du vendeur. Le vendeur choisit produit, style, durée.',
         input_schema: {
           type: 'object',
           properties: {
             productId: { type: 'string' },
-            format: { type: 'string', description: 'tiktok | instagram | catalogue' },
+            style: { type: 'string', description: 'luxe | streetwear | sport | elegant | minimaliste | premium | energique' },
+            duration: { type: 'number', description: 'Durée en secondes (6-60)' },
+            format: { type: 'string', description: 'tiktok | instagram | facebook | youtube | catalogue' },
           },
           required: ['productId'],
         },
       },
-      run: async ({ productId, format }, ctx) => {
-        const own = ownProduct(ctx, productId);
+      run: async (input, ctx) => {
+        const own = ownProduct(ctx, input.productId);
         if (own.error) return own;
-        const job = await videoStudio.createJob({ userId: ctx.user.id, productId, format: format || 'tiktok' });
-        return { jobId: job.id, format: job.format, storyboard: job.storyboard };
+        if (input.style) memory.remember(ctx.user.id, 'seller', { styleVideoPrefere: input.style });
+        const r = await videoAgent.run(input, ctx);
+        return { jobId: r.jobId, format: r.plan.format, plan: r.plan };
       },
     },
     {
       def: {
-        name: 'enhance_photo',
-        description: 'Lance une amélioration de photo produit (studio IA) : suppression de fond, lumière, netteté, fond professionnel.',
+        name: 'create_photo',
+        description: 'AI Photo Pro : crée un dossier de production photo professionnel (type de photo, mise en scène intelligente, mannequin, multi-angles, pipeline 4K/8K) pour un produit du vendeur. 14 types disponibles.',
         input_schema: {
           type: 'object',
           properties: {
-            productName: { type: 'string' },
-            operations: { type: 'array', items: { type: 'string' } },
-            style: { type: 'string', description: 'ecommerce-blanc | luxe-premium | lifestyle' },
+            productId: { type: 'string' },
+            photoType: { type: 'string', description: 'catalogue-ecommerce | studio-blanc | premium-noir | luxe | lifestyle | publicitaire | flat-lay | magazine …' },
+            resolution: { type: 'string', description: '1080p | 2k | 4k | 8k' },
+            mannequin: { type: 'boolean' },
+            multiAngle: { type: 'boolean' },
           },
-          required: ['productName'],
         },
       },
       run: async (input, ctx) => {
-        const job = await photoStudio.createJob({
-          userId: ctx.user.id,
-          productName: input.productName,
-          operations: input.operations && input.operations.length ? input.operations : ['enhance-quality', 'remove-background'],
-          style: input.style || null,
-        });
-        return { jobId: job.id, brief: job.brief, status: job.status };
+        if (input.productId) { const own = ownProduct(ctx, input.productId); if (own.error) return own; }
+        const r = await photoAgent.run({ ...input, action: 'produce' }, ctx);
+        return { jobId: r.jobId, spec: r.spec };
+      },
+    },
+    {
+      def: {
+        name: 'create_full_ad',
+        description: 'Publicité complète : mobilise plusieurs agents IA qui collaborent (Produit → Photo → Vidéo → Marketing) via l\'orchestrateur, pour un produit du vendeur.',
+        input_schema: { type: 'object', properties: { productId: { type: 'string' } }, required: ['productId'] },
+      },
+      run: async ({ productId }, ctx) => {
+        const own = ownProduct(ctx, productId);
+        if (own.error) return own;
+        return orchestrator.handle({ user: ctx.user, text: 'créer une publicité vidéo complète', productId });
+      },
+    },
+    {
+      def: {
+        name: 'stock_alerts',
+        description: 'AI Stock : alertes de rupture de stock pour la boutique du vendeur (vitesse de vente, jours de couverture, saison).',
+        input_schema: { type: 'object', properties: {} },
+      },
+      run: (_input, ctx) => stockAgent.analyze({ sellerId: ctx.user.id }),
+    },
+    {
+      def: {
+        name: 'analyze_reviews',
+        description: 'AI Analyse des avis : points positifs, négatifs, problèmes récurrents et satisfaction, pour un produit du vendeur ou toute sa boutique.',
+        input_schema: { type: 'object', properties: { productId: { type: 'string' } } },
+      },
+      run: async ({ productId }, ctx) => {
+        if (productId) { const own = ownProduct(ctx, productId); if (own.error) return own; return reviewsAgent.run({ productId }, ctx); }
+        return reviewsAgent.run({ sellerId: ctx.user.id }, ctx);
       },
     },
   ];
@@ -215,18 +250,19 @@ module.exports = {
   avatar: '📈',
   accent: '#10b981',
   allowedRoles: ['seller', 'admin'],
-  greeting: "Salut 👋 Je suis votre coach commercial E-Market. Je n'analyse que VOTRE boutique. Demandez-moi une analyse de vos ventes, l'optimisation d'un produit ou la création d'une pub.",
+  memoryNamespace: 'seller',
+  greeting: "Salut 👋 Je suis votre coach commercial E-Market. Je n'analyse que VOTRE boutique. Ventes, optimisation, alertes de stock, avis clients, photos/vidéos Pro, pub complète — demandez !",
   features: {},
   quickActions: [
     { label: '📊 Analyser mes ventes', prompt: 'Analyse mes ventes des 30 derniers jours et donne-moi 3 priorités.' },
-    { label: '🎯 Produits à optimiser', prompt: 'Quels produits dois-je optimiser en priorité ?' },
-    { label: '📣 Créer une pub', prompt: 'Crée-moi une publicité Instagram pour mon meilleur produit.' },
-    { label: '💰 Conseil de prix', prompt: 'Mes prix sont-ils bien positionnés par rapport au marché ?' },
+    { label: '📦 Alertes de stock', prompt: 'Quels produits risquent la rupture de stock ?' },
+    { label: '⭐ Analyse des avis', prompt: 'Analyse les avis de ma boutique : points forts et problèmes récurrents.' },
+    { label: '🎬 Pub complète IA', prompt: 'Crée une publicité vidéo complète pour mon meilleur produit.' },
   ],
   suggestions: [
     'Rédige une fiche pour « chemise en wax faite main, tailles M à XL »',
-    'Quelle est ma tendance de ventes ?',
-    'Génère une vidéo TikTok pour mon produit phare',
+    'Crée une photo premium fond noir en 4K pour mon produit phare',
+    'Génère une vidéo TikTok style premium de 20 secondes',
   ],
   systemPrompt: SYSTEM_PROMPT,
   buildTools,

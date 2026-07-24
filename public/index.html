@@ -25,6 +25,11 @@
     <div class="search-intent glass" id="search-intent"></div>
   </header>
 
+  <!-- Bannière personnalisée (AI Personnalisation) -->
+  <section class="section" id="perso-banner" style="display:none">
+    <div class="glass" id="perso-banner-inner" style="padding:22px 26px;border-left:3px solid var(--bleu)"></div>
+  </section>
+
   <!-- Résultats de recherche -->
   <section class="section" id="results-section" style="display:none">
     <h2>Résultats <span class="ai-tag">✨ IA</span></h2>
@@ -111,6 +116,7 @@
         document.getElementById('login-overlay').classList.remove('open');
         EM.toast(`Bienvenue ${data.user.name} !`);
         renderNav();
+        loadHome();
         loadRecos();
       } catch (err) { EM.toast(err.message); }
     });
@@ -156,6 +162,23 @@
         ]);
         renderGrid('foryou-grid', forYou.items);
         renderGrid('maylike-grid', mayLike.items);
+      } catch { /* silencieux */ }
+    }
+
+    // AI Personnalisation : page d'accueil différente par client.
+    async function loadHome() {
+      try {
+        const home = await EM.api('/api/ai/home');
+        const sec = document.getElementById('perso-banner');
+        if (home.personalized) {
+          document.getElementById('perso-banner-inner').innerHTML =
+            `<div class="ai-tag" style="margin-bottom:8px">✨ Personnalisé pour vous</div>
+             <div style="font-size:1.3rem;font-weight:800">${EM.esc(home.banner.title)}</div>
+             <div style="color:var(--gris);margin-top:4px">${EM.esc(home.banner.subtitle)}</div>`;
+          sec.style.display = 'block';
+        } else {
+          sec.style.display = 'none';
+        }
       } catch { /* silencieux */ }
     }
 
@@ -233,6 +256,7 @@
       o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('open'); }));
 
     renderNav();
+    loadHome();
     loadRecos();
     loadCatalog();
 

@@ -39,47 +39,62 @@
         <pre id="l-out" style="display:none"></pre>
       </section>
 
-      <!-- 6. Studio photo IA -->
+      <!-- AI Photo Pro -->
       <section class="panel glass">
-        <h3>📸 Studio photo IA</h3>
-        <p class="sub">Améliorez vos photos produit : fond, lumière, netteté, styles professionnels.</p>
-        <div class="field"><label>Nom du produit photographié</label><input id="ph-name" placeholder="Ex : babouches en cuir" /></div>
-        <div class="field"><label>Opérations</label>
-          <select id="ph-ops" multiple size="5">
-            <option value="remove-background" selected>Suppression du fond</option>
-            <option value="enhance-quality" selected>Amélioration qualité</option>
-            <option value="fix-lighting">Correction lumière</option>
-            <option value="sharpen">Netteté</option>
-            <option value="pro-background">Fond professionnel</option>
-          </select>
+        <h3>📸 AI Photo Pro <span class="ai-tag">4K/8K</span></h3>
+        <p class="sub">Studio photo cinématographique : type de photo, mise en scène intelligente, mannequin IA, multi-angles, pipeline pro.</p>
+        <div class="field"><label>Produit</label><select id="ph-product"></select></div>
+        <div class="field"><label>Type de photo</label><select id="ph-type"></select></div>
+        <div class="field"><label>Résolution</label>
+          <select id="ph-res"><option value="1080p">Full HD</option><option value="2k">2K</option><option value="4k" selected>4K</option><option value="8k">8K</option></select>
         </div>
-        <div class="field"><label>Style de fond</label>
-          <select id="ph-style">
-            <option value="">— aucun —</option>
-            <option value="ecommerce-blanc">E-commerce blanc</option>
-            <option value="luxe-premium">Luxe premium</option>
-            <option value="lifestyle">Lifestyle</option>
-          </select>
+        <div class="field">
+          <label><input type="checkbox" id="ph-mannequin" style="width:auto"> Mannequin IA</label>
+          <label><input type="checkbox" id="ph-angles" style="width:auto"> Générer multi-angles (8 vues)</label>
         </div>
-        <button class="btn btn-bleu" id="ph-run">✨ Lancer la retouche</button>
+        <button class="btn btn-bleu" id="ph-run">✨ Créer le dossier photo pro</button>
         <pre id="ph-out" style="display:none"></pre>
       </section>
 
-      <!-- 7. Créer une publicité IA (vidéo) -->
+      <!-- AI Video Pro -->
       <section class="panel glass">
-        <h3>🎬 Créer une publicité IA</h3>
-        <p class="sub">Vidéo marketing générée à partir de vos produits : zoom, rotation, textes animés, musique.</p>
+        <h3>🎬 AI Video Pro <span class="ai-tag">cinématographique</span></h3>
+        <p class="sub">Vous choisissez produit + style + durée. L'IA génère scénario, storyboard, plans caméra, éclairage, voix-off, musique et montage.</p>
         <div class="field"><label>Produit</label><select id="v-product"></select></div>
-        <div class="field"><label>Format</label>
-          <select id="v-format">
-            <option value="tiktok">Publicité TikTok (9:16)</option>
-            <option value="instagram">Publicité Instagram (9:16)</option>
-            <option value="catalogue">Vidéo catalogue (16:9)</option>
-          </select>
+        <div class="field"><label>Style</label>
+          <select id="v-style"><option value="premium">Premium</option><option value="luxe">Luxe</option><option value="streetwear">Streetwear</option><option value="sport">Sport</option><option value="elegant">Élégant</option><option value="minimaliste">Minimaliste</option><option value="energique">Énergique</option></select>
         </div>
-        <div class="field"><label>Brief (optionnel)</label><input id="v-brief" placeholder="Ex : insister sur la broderie main" /></div>
-        <button class="btn btn-bleu" id="v-run">✨ Générer le storyboard</button>
+        <div class="field"><label>Durée : <span id="v-dur-label">20</span>s</label><input type="range" id="v-duration" min="6" max="60" value="20" /></div>
+        <div class="field"><label>Format</label>
+          <select id="v-format"><option value="tiktok">TikTok (9:16)</option><option value="instagram">Instagram (9:16)</option><option value="youtube">YouTube (16:9)</option><option value="facebook">Facebook (1:1)</option><option value="catalogue">Catalogue (16:9)</option></select>
+        </div>
+        <button class="btn btn-bleu" id="v-run">✨ Générer la pub vidéo</button>
         <pre id="v-out" style="display:none"></pre>
+      </section>
+
+      <!-- Orchestrateur : pub complète (plusieurs agents collaborent) -->
+      <section class="panel glass" style="grid-column: 1 / -1">
+        <h3>🤝 Pub complète IA — agents qui collaborent <span class="ai-tag">orchestrateur</span></h3>
+        <p class="sub">Un seul clic mobilise plusieurs agents IA en chaîne : AI Produit → AI Photo Pro → AI Video Pro → AI Marketing. L'orchestrateur combine les résultats.</p>
+        <div class="field"><label>Produit</label><select id="orch-product"></select></div>
+        <button class="btn btn-bleu" id="orch-run">🤝 Lancer la production complète</button>
+        <div id="orch-out" style="display:none;margin-top:14px"></div>
+      </section>
+
+      <!-- AI Stock -->
+      <section class="panel glass">
+        <h3>📦 AI Stock <span class="ai-tag">prévision</span></h3>
+        <p class="sub">Prévoit les ruptures selon la vitesse des ventes, l'historique et la saison.</p>
+        <button class="btn btn-ghost btn-sm" id="stock-run">Analyser mon stock</button>
+        <div id="stock-out" style="margin-top:12px"></div>
+      </section>
+
+      <!-- AI Analyse des avis -->
+      <section class="panel glass">
+        <h3>⭐ AI Analyse des avis</h3>
+        <p class="sub">Points positifs, négatifs, problèmes récurrents et satisfaction de votre boutique.</p>
+        <button class="btn btn-ghost btn-sm" id="rev-run">Analyser mes avis</button>
+        <pre id="rev-out" style="display:none"></pre>
       </section>
 
       <!-- 8. Assistant marketing -->
@@ -144,8 +159,15 @@
       const mine = items.filter((p) => !p.seller || user.role === 'admin' || p.seller.id === user.id);
       const list = mine.length ? mine : items;
       const options = list.map((p) => `<option value="${p.id}">${EM.esc(p.name)}</option>`).join('');
-      document.getElementById('v-product').innerHTML = options;
-      document.getElementById('m-product').innerHTML = options;
+      ['v-product', 'm-product', 'ph-product', 'orch-product'].forEach((id) => { document.getElementById(id).innerHTML = options; });
+
+      // Options des studios Pro (types de photos, styles…).
+      const opts = await EM.api('/api/ai/studio/options');
+      document.getElementById('ph-type').innerHTML = opts.photoTypes.map((t) => `<option value="${t.id}">${EM.esc(t.label)}</option>`).join('');
+
+      // Curseur durée vidéo
+      const dur = document.getElementById('v-duration');
+      dur.addEventListener('input', () => { document.getElementById('v-dur-label').textContent = dur.value; });
 
       // 4. Annonce IA
       document.getElementById('l-gen').addEventListener('click', (e) => run(e.target, async () => {
@@ -174,40 +196,68 @@
         EM.toast(`✅ Produit publié : ${product.name}`);
       }));
 
-      // 6. Studio photo
+      // AI Photo Pro
       document.getElementById('ph-run').addEventListener('click', (e) => run(e.target, async () => {
-        const operations = [...document.getElementById('ph-ops').selectedOptions].map((o) => o.value);
-        const { job } = await EM.api('/api/ai/studio/photo', {
+        const r = await EM.api('/api/ai/studio/photo', {
           method: 'POST',
           body: {
-            productName: document.getElementById('ph-name').value,
-            operations,
-            style: document.getElementById('ph-style').value || null,
+            productId: document.getElementById('ph-product').value,
+            photoType: document.getElementById('ph-type').value,
+            resolution: document.getElementById('ph-res').value,
+            mannequin: document.getElementById('ph-mannequin').checked,
+            multiAngle: document.getElementById('ph-angles').checked,
           },
         });
-        // Le job est asynchrone : on relit son état après un court délai.
-        await new Promise((r) => setTimeout(r, 600));
-        const { job: done } = await EM.api(`/api/ai/studio/jobs/${job.id}`);
+        const s = r.spec;
         show('ph-out',
-          `JOB ${done.id}\nStatut : ${done.status}\n\nBRIEF DE RETOUCHE (IA)\n${done.brief}\n\n` +
-          (done.result ? `RÉSULTAT\n${done.result.note || JSON.stringify(done.result)}` : ''));
+          `DOSSIER DE PRODUCTION PHOTO\n════════════════════════════\n` +
+          `Type       : ${s.photoTypeLabel}\nRésolution : ${s.resolution.toUpperCase()} (${s.resolutionLabel}, ${s.dimensions})\n` +
+          `Fond       : ${s.background}\nÉclairage  : ${s.lighting}\n\n` +
+          `MISE EN SCÈNE INTELLIGENTE\n${s.staging.decors.map((d) => '• ' + d).join('\n')}\n\n` +
+          (s.mannequin ? `MANNEQUIN IA\n${JSON.stringify(s.mannequin, null, 1)}\n\n` : '') +
+          (s.angles ? `MULTI-ANGLES (${s.angles.length})\n${s.angles.map((a) => '• ' + a.label).join('\n')}\n\n` : '') +
+          `PIPELINE (${s.enhancementPipeline.length} étapes)\n${s.enhancementPipeline.map((p) => '• ' + p.detail).join('\n')}\n\n` +
+          `COHÉRENCE VISUELLE\n${s.consistency.map((c) => '• ' + c).join('\n')}\n\n` +
+          `DIRECTION ARTISTIQUE\n${s.direction}\n\n` +
+          `Rendu : ${r.provider === 'none' ? 'mode spécification (branchez un moteur pour les pixels)' : r.provider}`);
       }));
 
-      // 7. Vidéo
+      // AI Video Pro
       document.getElementById('v-run').addEventListener('click', (e) => run(e.target, async () => {
-        const { job } = await EM.api('/api/ai/studio/video', {
+        const r = await EM.api('/api/ai/studio/video', {
           method: 'POST',
           body: {
             productId: document.getElementById('v-product').value,
+            style: document.getElementById('v-style').value,
+            duration: parseInt(document.getElementById('v-duration').value, 10),
             format: document.getElementById('v-format').value,
-            description: document.getElementById('v-brief').value,
           },
         });
-        const sb = job.storyboard;
+        const p = r.plan;
         show('v-out',
-          `${sb.title}\nMusique : ${sb.music}\n\n` +
-          sb.scenes.map((s, i) => `Scène ${i + 1} (${s.duration}s) — ${s.shot}\n  Effet : ${s.effect} · Transition : ${s.transition}\n  Texte : « ${s.text} »`).join('\n\n') +
-          `\n\nCTA : ${sb.cta}\n\nStatut rendu : ${job.status} (fournisseur : ${job.provider})`);
+          `PLAN DE PRODUCTION VIDÉO\n════════════════════════\n${p.title}\n` +
+          `${p.platform} ${p.ratio} · ${p.resolution.toUpperCase()} ${p.fps}fps · ${p.duration}s · ${p.sceneCount} scènes\n\n` +
+          `SCÉNARIO\n${p.scenario}\n\n` +
+          `STORYBOARD\n${p.scenes.map((s) => `Scène ${s.index} (${s.duration}s) — ${s.camera}\n  Éclairage: ${s.lighting} · Animation: ${s.animation}\n  Texte: « ${s.text} » · Transition: ${s.transition}`).join('\n\n')}\n\n` +
+          `VOIX-OFF (${p.voiceOver.selected.gender}, ${p.voiceOver.selected.lang})\n« ${p.voiceOver.script} »\n\n` +
+          `MUSIQUE\n${p.music.track} (style ${p.music.style})\n\n` +
+          `MONTAGE\n• ${p.edit.cutting}\n• ${p.edit.transitions}\n• Titres animés, sous-titres, logo E-Market, ${p.edit.endScreen}\n\n` +
+          `Rendu : ${r.provider === 'none' ? 'mode spécification (branchez un moteur pour la vidéo)' : r.provider}`);
+      }));
+
+      // Orchestrateur — pub complète (agents qui collaborent)
+      document.getElementById('orch-run').addEventListener('click', (e) => run(e.target, async () => {
+        const productId = document.getElementById('orch-product').value;
+        const r = await EM.api('/api/ai/orchestrator', { method: 'POST', body: { text: 'créer une publicité vidéo complète', productId } });
+        const out = document.getElementById('orch-out');
+        out.style.display = 'block';
+        out.innerHTML = `<div style="color:var(--bleu);font-weight:700;margin-bottom:10px">${EM.esc(r.summary)}</div>` +
+          r.steps.map((st) => {
+            const ok = !st.error;
+            return `<div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:8px">
+              <b>${ok ? '✅' : '⚠️'} ${EM.esc(st.name)}</b>
+              <pre style="margin-top:8px;max-height:160px">${EM.esc(ok ? summarizeStep(st) : st.error)}</pre></div>`;
+          }).join('');
       }));
 
       // 8. Marketing
@@ -223,6 +273,39 @@
           `SLOGAN\n${kit.slogan}\n\nTEXTE PUB\n${kit.adCopy}\n\nPOST RÉSEAUX SOCIAUX\n${kit.socialPost}\n\n` +
           `HASHTAGS\n${kit.hashtags.join(' ')}\n\nSCRIPT VIDÉO\n${kit.videoScript}\n\nVOIX-OFF\n${kit.voiceOver}`);
       }));
+
+      // AI Stock — alertes de rupture
+      document.getElementById('stock-run').addEventListener('click', (e) => run(e.target, async () => {
+        const r = await EM.api('/api/ai/seller/stock-alerts');
+        const out = document.getElementById('stock-out');
+        const badge = (lvl) => ({ critique: 'risk-rouge', bientot: 'risk-orange', surveiller: 'risk-orange' }[lvl] || 'risk-vert');
+        out.innerHTML = r.alerts.length
+          ? r.alerts.map((a) => `<div class="risk-row"><span class="risk-badge ${badge(a.level)}">${a.level}</span>
+              <div class="who">${EM.esc(a.name)} — stock ${a.stock}${a.daysOfCover !== null ? `, ${a.daysOfCover}j de couverture` : ''}
+              <div class="why">${EM.esc(a.recommendation)}</div></div></div>`).join('')
+          : `<p style="color:var(--vert)">✅ Aucun risque de rupture (${r.okCount} produits en stock sain).</p>`;
+      }));
+
+      // AI Analyse des avis
+      document.getElementById('rev-run').addEventListener('click', (e) => run(e.target, async () => {
+        const r = await EM.api('/api/ai/reviews/analysis');
+        if (r.count === 0) return show('rev-out', r.message || 'Aucun avis.');
+        show('rev-out',
+          `SATISFACTION : ${r.satisfaction ?? 'n/a'}/5 (${r.satisfactionLabel})\nAvis analysés : ${r.count}\n\n` +
+          `POINTS POSITIFS\n${(r.positiveSummary ? r.positiveSummary : (r.positives || []).join(', ')) || '—'}\n\n` +
+          `POINTS NÉGATIFS\n${(r.negativeSummary ? r.negativeSummary : (r.negatives || []).join(', ')) || '—'}\n\n` +
+          `PROBLÈMES RÉCURRENTS\n${(r.recurringIssues || []).join(', ') || '—'}` +
+          (r.recommendation ? `\n\nRECOMMANDATION\n${r.recommendation}` : ''));
+      }));
+    }
+
+    function summarizeStep(st) {
+      const r = st.result || {};
+      if (st.agent === 'product' && r.listing) return `Titre: ${r.listing.title}\nPrix conseillé: ${EM.fcfa(r.listing.suggestedPrice)}\nHashtags: ${(r.hashtags || []).join(' ')}`;
+      if (st.agent === 'photo' && r.spec) return `Photo ${r.spec.photoTypeLabel} · ${r.spec.resolution.toUpperCase()}\nDécors: ${r.spec.staging.decors.slice(0, 3).join(', ')}\nPipeline: ${r.spec.enhancementPipeline.length} étapes`;
+      if (st.agent === 'video' && r.plan) return `Vidéo ${r.plan.style} · ${r.plan.resolution.toUpperCase()} ${r.plan.fps}fps · ${r.plan.duration}s\nCaméra: ${r.plan.cameraMoves.slice(0, 3).join(', ')}\nMusique: ${r.plan.music.track}`;
+      if (st.agent === 'marketing' && r.kit) return `Slogan: ${r.kit.slogan}\nPost: ${r.kit.socialPost.slice(0, 100)}…`;
+      return JSON.stringify(r).slice(0, 200);
     }
   </script>
 </body>

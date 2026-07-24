@@ -10,6 +10,7 @@
 const { store } = require('../../db/store');
 const catalog = require('../services/catalog');
 const memory = require('../services/memory');
+const recommendationAgent = require('../agents/recommendation');
 const { CONTEXT } = require('./brand');
 
 const SYSTEM_PROMPT = `Tu es E-Market Shopping Assistant, le conseiller personnel de shopping des
@@ -113,6 +114,18 @@ function buildTools() {
     },
     {
       def: {
+        name: 'complete_basket',
+        description: 'Compose un panier/tenue complet autour d\'un produit (produits complémentaires assortis), éventuellement dans un budget.',
+        input_schema: {
+          type: 'object',
+          properties: { productId: { type: 'string' }, budget: { type: 'number' } },
+          required: ['productId'],
+        },
+      },
+      run: (input, ctx) => recommendationAgent.completeBasket(input.productId, input.budget),
+    },
+    {
+      def: {
         name: 'get_my_orders',
         description: 'Commandes du client connecté (statut, montant, articles) pour le suivi de commande.',
         input_schema: { type: 'object', properties: {} },
@@ -175,13 +188,14 @@ module.exports = {
   avatar: '🛍️',
   accent: '#1a8cff',
   allowedRoles: null, // public
+  memoryNamespace: 'shopping',
   greeting: "Bonjour 👋 Je suis votre conseiller shopping E-Market. Dites-moi ce que vous cherchez — par exemple : « une tenue de mariage à Bamako pour 50 000 FCFA ».",
   features: { products: true },
   directives: ['PRODUCTS'],
   quickActions: [
     { label: '🎁 Idées cadeaux', prompt: "Donne-moi des idées de cadeaux." },
+    { label: '🧺 Panier complet', prompt: 'Compose-moi une tenue complète assortie.' },
     { label: '📦 Suivre ma commande', prompt: 'Où en est ma commande ?' },
-    { label: '💳 Modes de paiement', prompt: 'Quels sont les modes de paiement ?' },
     { label: '⚖️ Comparer', prompt: 'Aide-moi à comparer deux produits.' },
   ],
   suggestions: [

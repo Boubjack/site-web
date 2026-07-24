@@ -47,10 +47,10 @@ const PRODUCTS = [
   { id: 'p-020', name: 'Smartphone Gaming X-Pro 256Go', category: 'electronique', subcategory: 'smartphones', price: 185000, colors: ['noir'], sizes: [], sellerId: 'u-vend-2', stock: 9, emoji: '📱', occasion: [], style: 'gaming', material: '', gender: '',
     specs: { ram: '12 Go', stockage: '256 Go', batterie: '5500 mAh', ecran: '6.8" AMOLED 120Hz', puce: 'Octa-core 3.2GHz' },
     description: "Smartphone taillé pour le jeu : écran 120Hz, refroidissement vapeur, 12 Go de RAM. Le meilleur rapport puissance/prix sous 200 000 FCFA." },
-  { id: 'p-021', name: 'Smartphone Lite 128Go', category: 'electronique', subcategory: 'smartphones', price: 95000, colors: ['bleu', 'noir'], sizes: [], sellerId: 'u-vend-2', stock: 14, emoji: '📱', occasion: [], style: 'quotidien', material: '', gender: '',
+  { id: 'p-021', name: 'Smartphone Lite 128Go', category: 'electronique', subcategory: 'smartphones', price: 95000, colors: ['bleu', 'noir'], sizes: [], sellerId: 'u-vend-2', stock: 3, emoji: '📱', occasion: [], style: 'quotidien', material: '', gender: '',
     specs: { ram: '6 Go', stockage: '128 Go', batterie: '5000 mAh', ecran: '6.5" LCD 90Hz' },
     description: "Le quotidien sans se ruiner : grande batterie, double SIM, photo correcte." },
-  { id: 'p-022', name: 'Écouteurs sans fil ANC', category: 'electronique', subcategory: 'audio', price: 22000, colors: ['noir', 'blanc'], sizes: [], sellerId: 'u-vend-2', stock: 35, emoji: '🎧', occasion: [], style: '', material: '', gender: '',
+  { id: 'p-022', name: 'Écouteurs sans fil ANC', category: 'electronique', subcategory: 'audio', price: 22000, colors: ['noir', 'blanc'], sizes: [], sellerId: 'u-vend-2', stock: 2, emoji: '🎧', occasion: [], style: '', material: '', gender: '',
     description: "Réduction de bruit active, 30h d'autonomie avec le boîtier, Bluetooth 5.3." },
   { id: 'p-023', name: 'Powerbank 20 000 mAh charge rapide', category: 'electronique', subcategory: 'accessoires-tech', price: 13000, colors: ['noir'], sizes: [], sellerId: 'u-vend-2', stock: 40, emoji: '🔋', occasion: [], style: '', material: '', gender: '',
     description: "Indispensable : 20 000 mAh, 22.5W, deux sorties USB. Compagnon des coupures." },
@@ -109,6 +109,7 @@ function seed({ force = false } = {}) {
   store.replaceAll('mediaJobs', []);
   store.replaceAll('supportTickets', []);
   store.replaceAll('aiConversations', []);
+  store.replaceAll('moderationFlags', []);
   return true;
 }
 

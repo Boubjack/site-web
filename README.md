@@ -19,6 +19,65 @@ sur le catalogue réel remplace les modèles (utile en développement — tout l
 site reste fonctionnel). **Avec `ANTHROPIC_API_KEY`**, les modèles Claude
 prennent le relais (conversation, vision, génération, analyse), avec streaming.
 
+## Architecture multi-agents (orchestrateur + agents spécialisés)
+
+E-Market AI n'est pas une IA monolithique. C'est un **orchestrateur** qui pilote
+un **registre d'agents spécialisés** collaboratifs, exposés à travers **trois
+assistants** conversationnels par rôle.
+
+```
+                 ┌───────────────────────────────────────────┐
+   Demande  ───▶ │  ORCHESTRATEUR (server/ai/orchestrator.js) │
+                 │  identifie le(s) agent(s), exécute, combine │
+                 └───────────────┬───────────────────────────┘
+                                 │ (permissions par rôle)
+        ┌───────────────┬────────┼────────┬───────────────┬─────────────┐
+        ▼               ▼        ▼        ▼               ▼             ▼
+   AI Produit     AI Photo Pro  AI Video  AI Marketing  AI Modération  AI Fraude
+   AI Avis        AI Stock      AI Tendances  AI Perso.  AI Traduction  AI Recommandation
+        (server/ai/agents/*.js — un module par agent, ajout sans modifier les autres)
+```
+
+**Orchestrateur** — reçoit toute demande, identifie le bon agent, et combine les
+réponses quand plusieurs agents sont nécessaires. Pipelines composites, ex. une
+**publicité vidéo complète** = `AI Produit → AI Photo Pro → AI Video Pro → AI
+Marketing` (les agents collaborent, l'orchestrateur assemble). Endpoint :
+`POST /api/ai/orchestrator`.
+
+**Agents spécialisés** (`server/ai/agents/`) — chacun mono-responsabilité,
+permissionné par rôle, découvrable par mots-clés :
+
+| Agent | Rôles | Rôle |
+|---|---|---|
+| `product` | vendeur/admin | Fiches produit (titre, desc, SEO, tags, hashtags, prix) |
+| `photo` | vendeur/admin | **AI Photo Pro** — 14 types, mannequins, multi-angles, mise en scène, pipeline 4K/8K |
+| `video` | vendeur/admin | **AI Video Pro** — storyboard cinématographique, caméra, éclairage, voix-off, musique, montage |
+| `marketing` | vendeur/admin | Slogans, posts FB/IG/TikTok, campagnes, emails, SMS, push |
+| `moderation` | admin | Vérifie titres/descriptions/avis/images ; contenu interdit, contrefaçon, spam |
+| `fraud` | admin | Faux comptes/avis, paiements/commandes suspects, score de risque |
+| `reviews` | vendeur/admin | Points positifs/négatifs, problèmes récurrents, satisfaction |
+| `stock` | vendeur/admin | Prévision de rupture (vitesse de vente, saison) |
+| `trends` | admin | Produits/catégories/recherches populaires + recommandations |
+| `personalization` | public | Page d'accueil différente par client |
+| `translation` | public | FR/EN (bambara préparé) |
+| `recommendation` | public | Recommandations, produits complémentaires, paniers complets |
+
+**Ajouter un agent** = créer `agents/<nom>.js` (contrat : `id, name, allowedRoles,
+keywords, run, tool?`) et l'enregistrer dans `agents/index.js`. L'orchestrateur,
+les permissions et les assistants le prennent automatiquement en charge —
+**aucun agent existant n'est modifié**.
+
+### AI Photo Pro / AI Video Pro — qualité cinématographique
+
+Le cerveau créatif est entièrement implémenté (direction artistique, pipeline de
+traitement, storyboard, plans caméra, voix-off, musique, cohérence visuelle). Le
+**rendu des pixels 4K/8K** est délégué à un moteur externe branché via `.env`
+(`IMAGE_PROVIDER`, `VIDEO_PROVIDER`, `TTS_PROVIDER`, `MUSIC_PROVIDER`). Sans
+moteur, les studios livrent le **dossier de production complet** (mode
+spécification) + un job de rendu ; brancher un moteur (Replicate, Stability,
+Runway, Sora…) active le rendu réel **sans changer le reste du code**
+(adaptateurs dans `server/ai/studio/jobs.js`).
+
 ## Trois assistants IA distincts
 
 E-Market AI n'est **pas** une IA unique réutilisée partout : ce sont trois

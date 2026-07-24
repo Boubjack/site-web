@@ -8,7 +8,7 @@
  *    sur son moteur local (règles sur le catalogue) — le site reste
  *    fonctionnel en développement.
  *  - Architecture prête pour d'autres familles de modèles (vision incluse ;
- *    génération image/vidéo via server/ai/services/photoStudio et videoStudio).
+ *    génération image/vidéo via les agents AI Photo Pro / AI Video Pro).
  */
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('../../config');

@@ -13,8 +13,17 @@ const config = {
     },
   },
   media: {
-    imageProvider: process.env.IMAGE_PROVIDER || 'none',
-    videoProvider: process.env.VIDEO_PROVIDER || 'none',
+    // Moteur de génération/rendu d'images (AI Photo Pro).
+    imageProvider: process.env.IMAGE_PROVIDER || 'none', // none | replicate | stability | custom
+    imageMaxResolution: process.env.IMAGE_MAX_RESOLUTION || '4k', // 1080p | 2k | 4k | 8k
+    // Moteur de génération/rendu vidéo (AI Video Pro).
+    videoProvider: process.env.VIDEO_PROVIDER || 'none', // none | runway | pika | sora | custom
+    videoMaxResolution: process.env.VIDEO_MAX_RESOLUTION || '4k', // 1080p | 2k | 4k | 8k
+    // Synthèse voix-off (TTS) et musique.
+    ttsProvider: process.env.TTS_PROVIDER || 'none',     // none | elevenlabs | azure | custom
+    musicProvider: process.env.MUSIC_PROVIDER || 'none', // none | suno | custom
+    get rendersImages() { return this.imageProvider !== 'none'; },
+    get rendersVideo() { return this.videoProvider !== 'none'; },
   },
 };
 

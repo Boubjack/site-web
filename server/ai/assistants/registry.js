@@ -19,6 +19,7 @@
  */
 const provider = require('../provider/anthropic');
 const { store } = require('../../db/store');
+const memory = require('../services/memory');
 const { createLogger } = require('../../utils/logger');
 
 const log = createLogger('ai:assistants');
@@ -113,6 +114,17 @@ async function run(assistantId, { user, messages, sse }) {
   const tools = typeof def.buildTools === 'function' ? def.buildTools(ctx) : [];
   const toolDefs = tools.map((t) => t.def);
 
+  // Mémoire propre à l'assistant (lecture) : injectée comme contexte volatil
+  // dans le dernier message utilisateur — chaque assistant lit SA mémoire.
+  let convo = messages;
+  if (def.memoryNamespace && user) {
+    const note = memory.summaryFor(user.id, def.memoryNamespace);
+    if (note && convo.length) {
+      const last = convo[convo.length - 1];
+      convo = [...convo.slice(0, -1), { ...last, content: `${last.content}\n\n<memoire>${note}</memoire>` }];
+    }
+  }
+
   const executeTool = async (name, input) => {
     const tool = tools.find((t) => t.def.name === name);
     // Garde-fou : le modèle ne peut appeler qu'un outil déclaré par CET assistant.
@@ -136,7 +148,7 @@ async function run(assistantId, { user, messages, sse }) {
 
   const { text } = await provider.agentLoop({
     system: def.systemPrompt,
-    messages,
+    messages: convo,
     tools: toolDefs,
     executeTool,
     onToolUse: (name) => sse('status', { tool: name }),
@@ -151,6 +163,11 @@ async function run(assistantId, { user, messages, sse }) {
 
   const cleanText = hasDirectives ? stripDirectives(text) : text;
   const extra = def.finalize ? await def.finalize(text, ctx) : {};
+  // Apprentissage mémoire (shopping) : préférences déduites du dernier message.
+  if (user && def.memoryNamespace === 'shopping') {
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+    if (lastUser) memory.learnFromMessage(user.id, lastUser.content);
+  }
   if (user) saveHistory(assistantId, user.id, [...messages, { role: 'assistant', content: cleanText }]);
   sse('done', { text: cleanText, ...extra });
 }

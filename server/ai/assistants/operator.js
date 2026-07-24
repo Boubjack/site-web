@@ -12,6 +12,8 @@ const analytics = require('../services/analytics');
 const forecast = require('../services/forecast');
 const fraud = require('../services/fraud');
 const catalog = require('../services/catalog');
+const trendsAgent = require('../agents/trends');
+const { store } = require('../../db/store');
 
 const SYSTEM_PROMPT = `Tu es E-Market Operator AI, l'assistant métier de l'administrateur d'E-Market
 (accès emarket.admin, marketplace ouest-africaine, prix en FCFA). Tu possèdes
@@ -48,6 +50,8 @@ function buildTools() {
     { def: { name: 'finance_report', description: 'Rapport financier complet : CA, commissions 8%, croissance, top produits/vendeurs.', input_schema: { type: 'object', properties: { days: { type: 'number' } } } }, run: (i) => analytics.financeReport(i) },
     { def: { name: 'security_overview', description: 'Vue sécurité : fraude, faux avis, faux comptes, comportements suspects (vert/orange/rouge).', input_schema: { type: 'object', properties: {} } }, run: () => fraud.overview() },
     { def: { name: 'sales_forecast', description: 'Prévision de ventes, croissance et tendance (régression sur les revenus quotidiens) + catégories en tendance.', input_schema: { type: 'object', properties: { days: { type: 'number' }, horizon: { type: 'number' } } } }, run: (i) => ({ forecast: forecast.salesForecast(i), trendingCategories: forecast.trendingCategories() }) },
+    { def: { name: 'trends_overview', description: 'AI Tendances : produits/catégories/recherches populaires, tendances locales et saisonnières, + recommandations de mise en avant.', input_schema: { type: 'object', properties: {} } }, run: (i, ctx) => trendsAgent.run(i, ctx) },
+    { def: { name: 'moderation_flags', description: 'AI Modération : file des signalements automatiques (contenu interdit, contrefaçons, spam, offensant) à traiter.', input_schema: { type: 'object', properties: {} } }, run: () => ({ flags: store.find('moderationFlags', (fl) => fl.status === 'ouvert') }) },
   ];
 }
 
@@ -90,15 +94,16 @@ module.exports = {
   avatar: '🛡️',
   accent: '#8b5cf6',
   allowedRoles: ['admin'],
-  greeting: "Bonjour 👋 Je suis Operator AI. J'analyse toute la plateforme (ventes, vendeurs, sécurité, finance, prévisions). Posez votre question métier.",
+  memoryNamespace: 'operator',
+  greeting: "Bonjour 👋 Je suis Operator AI. J'analyse toute la plateforme (ventes, vendeurs, sécurité, finance, prévisions, tendances, modération). Posez votre question métier.",
   features: { charts: true },
   directives: ['CHART'],
   maxTokens: 4096,
   quickActions: [
     { label: '📉 Pourquoi les ventes baissent ?', prompt: 'Pourquoi les ventes diminuent ? Analyse la tendance.' },
     { label: '📈 Vendeurs qui progressent', prompt: 'Quels vendeurs progressent ?' },
-    { label: '🏆 Meilleur produit', prompt: 'Quel est le meilleur produit cette semaine ?' },
-    { label: '🎯 Promotions à lancer', prompt: 'Quelles promotions dois-je lancer ?' },
+    { label: '🔥 Tendances', prompt: 'Quelles sont les tendances actuelles et que faut-il promouvoir ?' },
+    { label: '🛡️ File de modération', prompt: 'Y a-t-il des contenus signalés à modérer ?' },
   ],
   suggestions: [
     'Fais-moi une prévision des ventes pour la semaine prochaine',

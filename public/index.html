@@ -19,7 +19,7 @@
     <p>Décrivez ce que vous cherchez avec vos mots — E-Market AI comprend et trouve pour vous.</p>
     <div class="ai-search glass">
       <input id="search-input" placeholder="Ex : un téléphone puissant pour jouer à moins de 200 000 FCFA…" />
-      <button class="btn btn-orange" id="search-btn">✨ Recherche IA</button>
+      <button class="btn btn-bleu" id="search-btn">✨ Recherche IA</button>
     </div>
     <div class="search-hint">Essayez : « une robe élégante noire » · « une tenue de mariage à 50 000 FCFA » · « un cadeau pour ma mère »</div>
     <div class="search-intent glass" id="search-intent"></div>
@@ -66,7 +66,7 @@
       <h3>Connexion</h3>
       <div class="field"><label>Email</label><input id="login-email" placeholder="client@emarket.ml" /></div>
       <div class="field"><label>Mot de passe</label><input id="login-pass" type="password" placeholder="client123" /></div>
-      <button class="btn btn-orange" id="login-btn" style="width:100%">Se connecter</button>
+      <button class="btn btn-bleu" id="login-btn" style="width:100%">Se connecter</button>
       <p style="color:var(--gris);font-size:0.78rem;margin-top:14px">
         Comptes démo — client : <b>client@emarket.ml</b> / client123 ·
         vendeur : <b>vendeur@emarket.ml</b> / vendeur123 ·
@@ -176,7 +176,7 @@
         <button class="close" onclick="document.getElementById('product-overlay').classList.remove('open')">✕</button>
         <div style="font-size:4.5rem;text-align:center">${product.emoji}</div>
         <h3>${EM.esc(product.name)}</h3>
-        <div style="color:var(--orange);font-weight:800;font-size:1.4rem">${EM.fcfa(product.price)}</div>
+        <div style="color:var(--bleu);font-weight:800;font-size:1.4rem">${EM.fcfa(product.price)}</div>
         <div style="color:var(--gris);font-size:0.85rem;margin:6px 0 12px">
           Vendu par <b>${EM.esc(product.seller ? product.seller.shop : 'E-Market')}</b>
           ${product.rating ? ` · ★ ${product.rating} (${product.reviewCount} avis)` : ''}
@@ -187,7 +187,7 @@
         ${product.sizes.length ? `<p style="font-size:0.85rem"><b>Tailles :</b> ${product.sizes.map(EM.esc).join(', ')}</p>` : ''}
         ${product.specs ? `<p style="font-size:0.85rem"><b>Specs :</b> ${Object.entries(product.specs).map(([k, v]) => `${EM.esc(k)}: ${EM.esc(v)}`).join(' · ')}</p>` : ''}
         <div style="display:flex;gap:10px;margin:18px 0">
-          <button class="btn btn-orange" id="buy-btn" style="flex:1">🛒 Acheter maintenant</button>
+          <button class="btn btn-bleu" id="buy-btn" style="flex:1">🛒 Acheter maintenant</button>
           <button class="btn btn-ghost" id="fav-btn">🤍</button>
         </div>
         ${reviews.length ? `<h4 style="margin:14px 0 8px">Avis clients</h4>` +
@@ -207,7 +207,7 @@
         c.addEventListener('click', () => openProduct(c.dataset.id)));
       modal.querySelector('#fav-btn').addEventListener('click', (e) => {
         EM.track('favorite', { productId: id });
-        e.target.textContent = '🧡';
+        e.target.textContent = '💙';
         EM.toast('Ajouté aux favoris — E-Market AI s\'en souviendra !');
       });
       modal.querySelector('#buy-btn').addEventListener('click', async () => {

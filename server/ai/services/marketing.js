@@ -61,7 +61,7 @@ function localKit(card, campaign) {
     adCopy: `${card.name} à seulement ${price} sur E-Market. Qualité vérifiée, livraison 24-72h à Bamako, paiement à la livraison.${fete ? ` Offre${fete}, stock limité !` : ''}`,
     socialPost: `🔥 ${card.name}${fete ? ` — offre${fete} !` : ''}\n💰 ${price} seulement\n🚚 Livraison rapide à Bamako\n👉 Commandez sur E-Market !`,
     hashtags: ['#EMarket', '#Bamako', '#Mali', `#${card.category.replace(/-/g, '')}`, ...(fete ? [`#${campaign.replace('-', '')}`] : []), '#BonPlan'],
-    videoScript: `0-3s : gros plan produit sur fond noir, texte "${card.name}".\n3-8s : rotation produit, points forts en texte animé.\n8-14s : mise en situation, prix ${price} en orange.\n14-20s : logo E-Market + CTA "Commandez maintenant".`,
+    videoScript: `0-3s : gros plan produit sur fond noir, texte "${card.name}".\n3-8s : rotation produit, points forts en texte animé.\n8-14s : mise en situation, prix ${price} en bleu.\n14-20s : logo E-Market + CTA "Commandez maintenant".`,
     voiceOver: `${card.name}, disponible dès maintenant sur E-Market à ${price}. Qualité garantie, livraison express à Bamako. E-Market, votre marché, en mieux.`,
     local: true,
   };

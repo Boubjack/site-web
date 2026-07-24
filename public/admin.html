@@ -16,7 +16,7 @@
   <main class="dash">
     <div id="gate" class="panel glass" style="display:none;text-align:center">
       <h3>Accès administrateur requis</h3>
-      <p class="sub">Connectez-vous en admin (démo : admin@emarket.ml / admin123) depuis la <a href="/" style="color:var(--orange)">page d'accueil</a>.</p>
+      <p class="sub">Connectez-vous en admin (démo : admin@emarket.ml / admin123) depuis la <a href="/" style="color:var(--bleu)">page d'accueil</a>.</p>
     </div>
 
     <div id="board" style="display:none">
@@ -73,7 +73,7 @@
       // KPI (12. analyse financière)
       const report = await EM.api('/api/ai/finance/report?days=30');
       document.getElementById('kpis').innerHTML = `
-        <div class="kpi glass"><div class="label">Chiffre d'affaires (30j)</div><div class="value orange">${EM.fcfa(report.revenueFcfa)}</div></div>
+        <div class="kpi glass"><div class="label">Chiffre d'affaires (30j)</div><div class="value bleu">${EM.fcfa(report.revenueFcfa)}</div></div>
         <div class="kpi glass"><div class="label">Commissions E-Market (8%)</div><div class="value">${EM.fcfa(report.commissionFcfa)}</div></div>
         <div class="kpi glass"><div class="label">Commandes</div><div class="value">${report.orderCount}</div></div>
         <div class="kpi glass"><div class="label">Croissance</div><div class="value ${report.growthPct >= 0 ? '' : ''}">${report.growthPct === null ? 'n/a' : report.growthPct + ' %'}</div></div>`;

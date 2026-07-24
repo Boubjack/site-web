@@ -77,7 +77,7 @@ function localStoryboard(product, format) {
       { duration: 4, shot: 'rotation 360° du produit', effect: 'lumière tournante', text: 'Qualité premium ✦', transition: 'cut' },
       { duration: 4, shot: 'détail matière / caractéristique clé', effect: 'macro + parallaxe', text: product && product.material ? product.material : 'Détails soignés', transition: 'glissement' },
       { duration: 4, shot: 'mise en situation lifestyle', effect: 'ralenti', text: price ? `Seulement ${price}` : 'Prix imbattable', transition: 'flash blanc' },
-      { duration: Math.max(3, f.duration - 15), shot: 'packshot final logo E-Market', effect: 'texte animé orange', text: 'Commandez sur E-Market 🧡', transition: 'fondu noir' },
+      { duration: Math.max(3, f.duration - 15), shot: 'packshot final logo E-Market', effect: 'texte animé bleu', text: 'Commandez sur E-Market 💙', transition: 'fondu noir' },
     ],
     cta: 'Livraison 24-72h à Bamako — commandez maintenant sur E-Market !',
     local: true,

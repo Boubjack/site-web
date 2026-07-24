@@ -49,7 +49,7 @@ public/
   index.html               Boutique : recherche IA, recommandations, chat flottant
   seller.html              Dashboard vendeur : annonce IA, studios photo/vidéo, marketing
   admin.html               emarket.admin : analyste IA, sécurité, finance
-  css/emarket.css          Design system noir/blanc/orange, glassmorphism, animations
+  css/emarket.css          Design system noir/blanc/bleu, glassmorphism, animations
   js/app.js, js/chat.js    Client API + lecteur SSE + widget de chat
 ```
 
@@ -71,7 +71,7 @@ public/
 | 12 | Analyse financière (rapports) | `analytics.js` | `GET /api/ai/finance/report` |
 | 13 | Multilingue (fr/en, bambara préparé) | `i18n.js` | `POST /api/ai/translate` |
 | 14 | Mémoire IA (préférences, effaçable) | `memory.js` | `GET/DELETE /api/ai/memory` |
-| 15 | Design premium (noir/blanc/orange, glass) | frontend | — |
+| 15 | Design premium (noir/blanc/bleu, glass) | frontend | — |
 
 ### Choix techniques
 

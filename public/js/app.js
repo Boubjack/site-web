@@ -69,17 +69,22 @@
     productCardHtml(p) {
       return `
         <div class="card glass" data-id="${p.id}">
-          <div class="img">${p.emoji}</div>
+          <div class="img cat-${p.category || ''}">${p.emoji}</div>
           <div class="body">
             <div class="name">${EM.esc(p.name)}</div>
             <div class="meta">
               <span>${EM.esc(p.seller ? p.seller.shop : 'E-Market')}</span>
-              ${p.rating ? `<span class="rating">★ ${p.rating}</span>` : ''}
-              ${p.reviewCount ? `<span>(${p.reviewCount})</span>` : ''}
+              ${p.rating ? `<span class="rating">★ ${p.rating}${p.reviewCount ? ` (${p.reviewCount})` : ''}</span>` : ''}
             </div>
             <div class="price">${EM.fcfa(p.price)}</div>
           </div>
         </div>`;
+    },
+
+    /** Affiche des cartes fantômes pendant le chargement. */
+    skeletonGrid(id, n = 8) {
+      const grid = document.getElementById(id);
+      if (grid) grid.innerHTML = Array.from({ length: n }, () => '<div class="skeleton"></div>').join('');
     },
 
     esc(s) {

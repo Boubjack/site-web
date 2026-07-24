@@ -4,11 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-Market — la marketplace intelligente</title>
+  <meta name="theme-color" content="#08080a" />
+  <meta name="description" content="E-Market — la marketplace intelligente d'Afrique de l'Ouest, propulsée par E-Market AI." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a90ff'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='800' fill='white' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" />
   <link rel="stylesheet" href="/css/emarket.css" />
 </head>
 <body>
   <nav class="nav">
-    <a class="logo" href="/">E-<span>Market</span></a>
+    <a class="logo" href="/"><span>Market</span></a>
     <span class="ai-tag">✨ Propulsé par E-Market AI</span>
     <div class="links" id="nav-links"></div>
   </nav>
@@ -23,6 +29,12 @@
     </div>
     <div class="search-hint">Essayez : « une robe élégante noire » · « une tenue de mariage à 50 000 FCFA » · « un cadeau pour ma mère »</div>
     <div class="search-intent glass" id="search-intent"></div>
+    <div class="trust">
+      <span>✅ Produits vérifiés</span>
+      <span>🚚 Livraison 24-72h à Bamako</span>
+      <span>💳 Paiement à la livraison</span>
+      <span>↩️ Retour sous 14 jours</span>
+    </div>
   </header>
 
   <!-- Bannière personnalisée (AI Personnalisation) -->
@@ -256,6 +268,7 @@
       o.addEventListener('click', (e) => { if (e.target === o) o.classList.remove('open'); }));
 
     renderNav();
+    ['foryou-grid', 'maylike-grid', 'catalog-grid'].forEach((id) => EM.skeletonGrid(id, 5));
     loadHome();
     loadRecos();
     loadCatalog();

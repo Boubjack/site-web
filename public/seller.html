@@ -21,6 +21,13 @@
 
     <div class="dash-grid" id="tools" style="display:none">
 
+      <!-- Assistant VENDEUR (E-Market Seller Assistant) — coach commercial -->
+      <section class="panel glass" style="grid-column: 1 / -1">
+        <h3>🤖 E-Market Seller Assistant</h3>
+        <p class="sub">Votre coach commercial IA. Il n'analyse que VOTRE boutique : ventes, produits à optimiser, prix, marketing. Posez-lui vos questions.</p>
+        <div id="seller-assistant"></div>
+      </section>
+
       <!-- 4. Générer une annonce IA -->
       <section class="panel glass">
         <h3>📝 Générer une annonce IA</h3>
@@ -96,7 +103,7 @@
   </main>
 
   <script src="/js/app.js"></script>
-  <script src="/js/chat.js"></script>
+  <script src="/js/assistant-widget.js"></script>
   <script>
     const user = EM.user();
     const links = document.getElementById('nav-links');
@@ -111,6 +118,8 @@
       document.getElementById('gate').style.display = 'block';
     } else {
       document.getElementById('tools').style.display = 'grid';
+      // Assistant VENDEUR — panneau intégré (données limitées au vendeur connecté).
+      EMAssistant.mountPanel(document.getElementById('seller-assistant'), 'seller');
       init();
     }
 

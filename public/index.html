@@ -76,7 +76,7 @@
   </div>
 
   <script src="/js/app.js"></script>
-  <script src="/js/chat.js"></script>
+  <script src="/js/assistant-widget.js"></script>
   <script>
     // ---------- Navigation selon la session ----------
     function renderNav() {
@@ -235,6 +235,9 @@
     renderNav();
     loadRecos();
     loadCatalog();
+
+    // Assistant CLIENT (E-Market Shopping Assistant) — widget flottant.
+    EMAssistant.mountFloating('shopping');
   </script>
 </body>
 </html>

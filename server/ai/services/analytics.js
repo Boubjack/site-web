@@ -125,8 +125,143 @@ function financeReport({ days = 30 } = {}) {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Séries temporelles + données de graphiques (assistant Operator)     */
+/* ------------------------------------------------------------------ */
+
+function dailyRevenue({ days = 14 } = {}) {
+  const out = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - i);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const orders = store.find('orders', (o) => {
+      const t = new Date(o.createdAt).getTime();
+      return t >= start.getTime() && t < end.getTime();
+    });
+    out.push({
+      date: start.toISOString().slice(0, 10),
+      revenue: orders.reduce((s, o) => s + o.total, 0),
+      orders: orders.length,
+    });
+  }
+  return out;
+}
+
+/** Données prêtes à tracer, par clé (le graphique est rendu côté client). */
+function chartData(key) {
+  switch (key) {
+    case 'sales-14d': {
+      const d = dailyRevenue({ days: 14 });
+      return { title: "Chiffre d'affaires — 14 jours", unit: 'FCFA', bars: d.map((x) => ({ label: x.date.slice(5), value: x.revenue })) };
+    }
+    case 'top-products': {
+      const t = topProducts({ days: 30, limit: 6 });
+      return { title: 'Top produits — 30 jours', unit: 'FCFA', bars: t.map((x) => ({ label: x.name, value: x.revenue })) };
+    }
+    case 'sellers': {
+      const s = sellerPerformance({ days: 30 });
+      return { title: 'Revenu par vendeur — 30 jours', unit: 'FCFA', bars: s.map((x) => ({ label: x.shop, value: x.revenue })) };
+    }
+    case 'categories': {
+      const map = {};
+      for (const o of store.all('orders')) {
+        for (const i of o.items) {
+          const p = store.getById('products', i.productId);
+          if (p) map[p.category] = (map[p.category] || 0) + i.qty * i.price;
+        }
+      }
+      return { title: 'Revenu par catégorie', unit: 'FCFA', bars: Object.entries(map).map(([k, v]) => ({ label: k, value: v })).sort((a, b) => b.value - a.value) };
+    }
+    case 'forecast': {
+      const f = require('./forecast').salesForecast({ days: 30, horizon: 7 });
+      return { title: 'Prévision — 7 prochains jours', unit: 'FCFA', bars: f.projection.map((x) => ({ label: x.date.slice(5), value: x.revenue })) };
+    }
+    default:
+      return null;
+  }
+}
+
+const CHART_KEYS = ['sales-14d', 'top-products', 'sellers', 'categories', 'forecast'];
+
+/* ------------------------------------------------------------------ */
+/* Analytics limitées à un vendeur (assistant Seller)                  */
+/* Toutes ces fonctions ne considèrent que les produits du sellerId.   */
+/* ------------------------------------------------------------------ */
+
+function sellerItems(sellerId, sinceTs) {
+  const res = [];
+  for (const o of store.all('orders')) {
+    if (sinceTs && new Date(o.createdAt).getTime() < sinceTs) continue;
+    for (const item of o.items) {
+      const p = store.getById('products', item.productId);
+      if (p && p.sellerId === sellerId) res.push({ order: o, item, product: p });
+    }
+  }
+  return res;
+}
+
+function conversionForSeller(sellerId, sinceTs) {
+  const ids = new Set(store.find('products', (p) => p.sellerId === sellerId).map((p) => p.id));
+  const views = store.find('events', (e) => e.type === 'view' && ids.has(e.productId)
+    && (!sinceTs || new Date(e.createdAt).getTime() >= sinceTs)).length;
+  const purchases = sellerItems(sellerId, sinceTs).reduce((s, x) => s + x.item.qty, 0);
+  return { views, purchases, ratePct: views > 0 ? Math.round((purchases / views) * 1000) / 10 : null };
+}
+
+function sellerSalesStats(sellerId, { days = 30 } = {}) {
+  const since = Date.now() - days * 86400000;
+  const items = sellerItems(sellerId, since);
+  const revenue = items.reduce((s, x) => s + x.item.qty * x.item.price, 0);
+  const units = items.reduce((s, x) => s + x.item.qty, 0);
+  const orderIds = new Set(items.map((x) => x.order.id));
+
+  const prevSince = since - days * 86400000;
+  const prevItems = sellerItems(sellerId, prevSince).filter((x) => new Date(x.order.createdAt).getTime() < since);
+  const prevRevenue = prevItems.reduce((s, x) => s + x.item.qty * x.item.price, 0);
+  const growthPct = prevRevenue > 0 ? Math.round(((revenue - prevRevenue) / prevRevenue) * 1000) / 10 : null;
+
+  const byProduct = {};
+  for (const x of items) {
+    byProduct[x.product.id] = byProduct[x.product.id] || { id: x.product.id, name: x.product.name, qty: 0, revenue: 0 };
+    byProduct[x.product.id].qty += x.item.qty;
+    byProduct[x.product.id].revenue += x.item.qty * x.item.price;
+  }
+  const top = Object.values(byProduct).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+  return {
+    periodDays: days,
+    revenueFcfa: revenue,
+    unitsSold: units,
+    orderCount: orderIds.size,
+    averageOrderFcfa: orderIds.size ? Math.round(revenue / orderIds.size) : 0,
+    commissionPaidFcfa: Math.round(revenue * COMMISSION_RATE),
+    netRevenueFcfa: Math.round(revenue * (1 - COMMISSION_RATE)),
+    growthPct,
+    topProducts: top,
+    conversion: conversionForSeller(sellerId, since),
+  };
+}
+
+function sellerProductPerformance(sellerId, { days = 30 } = {}) {
+  const since = Date.now() - days * 86400000;
+  const products = store.find('products', (p) => p.sellerId === sellerId && p.active !== false);
+  const sold = {};
+  for (const x of sellerItems(sellerId, since)) sold[x.product.id] = (sold[x.product.id] || 0) + x.item.qty;
+  const stats = products.map((p) => {
+    const views = store.find('events', (e) => e.type === 'view' && e.productId === p.id
+      && new Date(e.createdAt).getTime() >= since).length;
+    const units = sold[p.id] || 0;
+    return { id: p.id, name: p.name, unitsSold: units, views, revenue: units * p.price, stock: p.stock };
+  });
+  return {
+    best: [...stats].sort((a, b) => b.revenue - a.revenue).slice(0, 5),
+    weak: [...stats].filter((x) => x.unitsSold === 0).sort((a, b) => b.views - a.views).slice(0, 5),
+  };
+}
+
 module.exports = {
   COMMISSION_RATE,
+  CHART_KEYS,
   salesSummary,
   topProducts,
   sellerPerformance,
@@ -134,4 +269,9 @@ module.exports = {
   reviewStats,
   catalogStats,
   financeReport,
+  dailyRevenue,
+  chartData,
+  sellerSalesStats,
+  sellerProductPerformance,
+  conversionForSeller,
 };

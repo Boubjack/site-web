@@ -11,7 +11,7 @@ const { rateLimit } = require('../middleware/rateLimit');
 const provider = require('./provider/anthropic');
 const config = require('../config');
 
-const assistant = require('./services/assistant');
+const assistants = require('./assistants'); // registre : shopping, seller, operator
 const recommender = require('./services/recommender');
 const search = require('./services/search');
 const seller = require('./services/seller');
@@ -19,7 +19,6 @@ const vision = require('./services/vision');
 const photoStudio = require('./services/photoStudio');
 const videoStudio = require('./services/videoStudio');
 const marketing = require('./services/marketing');
-const adminAnalyst = require('./services/adminAnalyst');
 const fraud = require('./services/fraud');
 const analytics = require('./services/analytics');
 const memory = require('./services/memory');
@@ -70,21 +69,52 @@ router.get('/status', (_req, res) => {
   });
 });
 
-/* ------------------------------------------------------------------ */
-/* 1 & 10. Assistant client + service client (chat SSE)                */
-/* ------------------------------------------------------------------ */
-router.post('/chat', aiLimit, asyncHandler(async (req, res) => {
+/* ================================================================== */
+/* ASSISTANTS IA — trois assistants distincts (registre modulaire)     */
+/*   shopping (public) · seller (vendeur) · operator (admin)           */
+/* Chaque assistant a son prompt, ses permissions, ses outils, ses     */
+/* données, son historique et son style propres.                       */
+/* ================================================================== */
+
+/** Liste des assistants accessibles à l'utilisateur courant. */
+router.get('/assistants', (req, res) => {
+  res.json({ assistants: assistants.listFor(req.user || null) });
+});
+
+/** Conversation streamée (SSE) avec un assistant donné. */
+router.post('/assistants/:id/chat', aiLimit, asyncHandler(async (req, res) => {
+  const def = assistants.get(req.params.id);
+  if (!def) throw new ApiError(404, 'Assistant introuvable.');
+  if (!assistants.canAccess(def, req.user || null)) throw new ApiError(403, 'Accès refusé à cet assistant.');
   const messages = sanitizeMessages(req.body);
-  const mode = req.body.mode === 'support' ? 'support' : 'shopping';
   const sse = openSse(res);
   try {
-    await assistant.chatStream({ messages, user: req.user || null, mode, sse });
+    await assistants.run(req.params.id, { user: req.user || null, messages, sse });
   } catch (err) {
     sse('error', { message: 'E-Market AI est momentanément indisponible.' });
-    req.log && req.log.error(err.message);
   }
   res.end();
 }));
+
+/** Historique propre à un assistant, pour l'utilisateur connecté. */
+router.get('/assistants/:id/history', requireAuth, (req, res) => {
+  const def = assistants.get(req.params.id);
+  if (!def) throw new ApiError(404, 'Assistant introuvable.');
+  if (!assistants.canAccess(def, req.user)) throw new ApiError(403, 'Accès refusé.');
+  res.json({ messages: assistants.loadHistory(req.params.id, req.user.id) });
+});
+
+router.delete('/assistants/:id/history', requireAuth, (req, res) => {
+  assistants.clearHistory(req.params.id, req.user.id);
+  res.json({ ok: true });
+});
+
+/** Données de graphique pour l'assistant Operator (admin uniquement). */
+router.get('/operator/chart/:key', requireRole('admin'), (req, res) => {
+  const data = analytics.chartData(req.params.key);
+  if (!data) throw new ApiError(404, 'Graphique inconnu.');
+  res.json({ chart: data });
+});
 
 /* ------------------------------------------------------------------ */
 /* 2. Recommandations + tracking comportemental                        */
@@ -211,20 +241,6 @@ router.post('/marketing/kit', requireRole('seller', 'admin'), heavyLimit, asyncH
     tone: String(req.body.tone || 'énergique').slice(0, 50),
   });
   res.json({ kit, campaigns: Object.keys(marketing.CAMPAIGNS) });
-}));
-
-/* ------------------------------------------------------------------ */
-/* 9. Assistant administrateur (chat SSE)                              */
-/* ------------------------------------------------------------------ */
-router.post('/admin/chat', requireRole('admin'), aiLimit, asyncHandler(async (req, res) => {
-  const messages = sanitizeMessages(req.body);
-  const sse = openSse(res);
-  try {
-    await adminAnalyst.chatStream({ messages, sse });
-  } catch {
-    sse('error', { message: 'E-Market AI est momentanément indisponible.' });
-  }
-  res.end();
 }));
 
 /* ------------------------------------------------------------------ */

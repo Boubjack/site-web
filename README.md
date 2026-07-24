@@ -19,6 +19,36 @@ sur le catalogue réel remplace les modèles (utile en développement — tout l
 site reste fonctionnel). **Avec `ANTHROPIC_API_KEY`**, les modèles Claude
 prennent le relais (conversation, vision, génération, analyse), avec streaming.
 
+## Trois assistants IA distincts
+
+E-Market AI n'est **pas** une IA unique réutilisée partout : ce sont trois
+assistants **complètement séparés**, chacun avec son propre prompt système, ses
+permissions, ses outils, ses données accessibles, son historique, son interface
+et son style. Ils partagent le même moteur, mais rien d'autre.
+
+| Assistant | Fichier | Qui | Données accessibles | Interface | Accent |
+|---|---|---|---|---|---|
+| **E-Market Shopping Assistant** | `assistants/shopping.js` | public (invités + clients) | catalogue public + commandes du client connecté | widget flottant (boutique) | bleu |
+| **E-Market Seller Assistant** | `assistants/seller.js` | vendeurs | **uniquement les données du vendeur connecté** | panneau intégré (`/seller.html`) | vert |
+| **E-Market Operator AI** | `assistants/operator.js` | admin | toute la plateforme + prévisions | panneau intégré + graphiques (`/admin.html`) | violet |
+
+**Isolation garantie :** le Shopping Assistant ne voit jamais les données des
+vendeurs ni l'administration ; le Seller Assistant vérifie la propriété de
+chaque produit et ne peut accéder à aucun autre vendeur ; l'Operator AI est le
+seul à avoir les autorisations globales. Le registre (`assistants/registry.js`)
+applique les permissions et empêche tout appel d'outil non déclaré par
+l'assistant. Le contrôle d'accès est vérifié côté serveur (403 sinon).
+
+**Ajouter un assistant** = créer un module `assistants/<nom>.js` (prompt,
+`allowedRoles`, `buildTools`, style…) et l'enregistrer dans `assistants/index.js`.
+Les routes, l'historique, les permissions et le widget frontend le prennent
+automatiquement en charge.
+
+Endpoints : `GET /api/ai/assistants` (liste selon le rôle),
+`POST /api/ai/assistants/:id/chat` (conversation SSE),
+`GET|DELETE /api/ai/assistants/:id/history` (historique propre à chaque
+assistant/utilisateur).
+
 ### Comptes de démonstration
 
 | Rôle | Email | Mot de passe | Accès |
@@ -43,8 +73,14 @@ server/
       anthropic.js         Fournisseur de modèles (Claude) : complétion,
                            sorties structurées JSON, boucle agentique streamée
                            (SSE + outils), vision. Repli local sans clé.
-      prompts.js           Identité E-Market AI + prompts spécialisés
-    services/              Un service par capacité (voir tableau ci-dessous)
+    assistants/            ★ Les trois assistants distincts + registre modulaire
+      registry.js          Contrat, permissions, exécution SSE, historiques
+      shopping.js          Assistant CLIENT (public)
+      seller.js            Assistant VENDEUR (données du vendeur connecté)
+      operator.js          Assistant ADMIN (plateforme complète)
+      index.js             Enregistrement des assistants
+    services/              Données/outils partagés (catalogue, analytics,
+                           fraude, studios, marketing, vision, prévisions…)
 public/
   index.html               Boutique : recherche IA, recommandations, chat flottant
   seller.html              Dashboard vendeur : annonce IA, studios photo/vidéo, marketing

@@ -268,5 +268,44 @@ button { font-family: inherit; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ---------- Assistants IA : actions rapides, suggestions, graphiques ---------- */
+.chat-quick-wrap { padding: 0 12px; }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0 4px; }
+.quick-btn {
+  background: var(--glass); border: 1px solid var(--glass-border); color: var(--blanc);
+  border-radius: 100px; padding: 6px 12px; font-size: 0.78rem; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.quick-btn:hover { border-color: var(--accent, var(--bleu)); background: rgba(255, 255, 255, 0.1); }
+.quick-btn.active { border-color: var(--accent, var(--bleu)); color: var(--accent, var(--bleu)); }
+
+.chat-suggestions { display: flex; flex-direction: column; gap: 6px; align-self: stretch; }
+.chat-suggestions .chip {
+  text-align: left; background: var(--noir-3); border: 1px solid var(--glass-border);
+  color: var(--gris); border-radius: 12px; padding: 9px 12px; font-size: 0.82rem; cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.chat-suggestions .chip:hover { border-color: var(--accent, var(--bleu)); color: var(--blanc); }
+
+.chat-chart {
+  align-self: stretch; background: var(--noir-2); border: 1px solid var(--glass-border);
+  border-radius: 12px; padding: 12px 14px; font-size: 0.8rem;
+}
+.chat-chart .chart-title { font-weight: 700; margin-bottom: 10px; color: var(--blanc); }
+.chart-row { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 8px; margin-bottom: 7px; }
+.chart-label { color: var(--gris); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.74rem; }
+.chart-track { height: 10px; background: var(--noir-3); border-radius: 100px; overflow: hidden; }
+.chart-bar { display: block; height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--accent, var(--bleu)), color-mix(in srgb, var(--accent, var(--bleu)) 55%, white)); }
+.chart-value { color: var(--blanc); font-size: 0.74rem; font-weight: 600; }
+
+/* Panneau assistant intégré (dashboards vendeur / admin) */
+.assistant-panel { display: flex; flex-direction: column; }
+.assistant-panel .chat-body {
+  height: 340px; overflow-y: auto; border-radius: 12px; padding: 14px;
+  display: flex; flex-direction: column; gap: 12px; margin-top: 10px;
+}
+.assistant-panel .chat-head { padding: 0 0 6px; }
+.assistant-panel .chat-input { border: none; padding: 12px 0 0; }
+
 .footer { text-align: center; color: var(--gris); font-size: 0.8rem; padding: 40px 20px 30px; }
 .footer span { color: var(--bleu); }

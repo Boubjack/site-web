@@ -108,6 +108,7 @@ function seed({ force = false } = {}) {
   store.replaceAll('aiMemory', []);
   store.replaceAll('mediaJobs', []);
   store.replaceAll('supportTickets', []);
+  store.replaceAll('aiConversations', []);
   return true;
 }
 

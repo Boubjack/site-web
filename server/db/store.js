@@ -12,7 +12,8 @@ const crypto = require('crypto');
 const { createLogger } = require('../utils/logger');
 
 const log = createLogger('db');
-const DATA_DIR = path.join(__dirname, 'data');
+// Répertoire de données surchargeable (isolation des tests, déploiements).
+const DATA_DIR = process.env.EMARKET_DATA_DIR || path.join(__dirname, 'data');
 const COLLECTIONS = [
   'users', 'products', 'orders', 'reviews',
   'events', 'aiMemory', 'mediaJobs', 'supportTickets',

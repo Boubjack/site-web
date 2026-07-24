@@ -19,6 +19,25 @@ sur le catalogue réel remplace les modèles (utile en développement — tout l
 site reste fonctionnel). **Avec `ANTHROPIC_API_KEY`**, les modèles Claude
 prennent le relais (conversation, vision, génération, analyse), avec streaming.
 
+## Qualité & exploitation
+
+```bash
+npm test        # suite de tests (Node test runner, zéro dépendance)
+npm run lint    # vérification de syntaxe de tous les fichiers .js
+npm run dev     # rechargement à chaud
+```
+
+- **Tests** : `test/` (unitaires + intégration HTTP) — auth, permissions,
+  recherche sémantique, agents C-suite, découverte, Creative Studio, campagne,
+  repli des fournisseurs. Données isolées via `EMARKET_DATA_DIR` (aucun impact
+  sur les données de dev).
+- **Sonde de santé** : `GET /api/health` (déploiement / load balancer).
+- **CI** : `.github/workflows/ci.yml` — lint + tests sur Node 18/20/22.
+- **Docker** : `docker build -t emarket . && docker run -p 3000:3000 emarket`
+  (image de prod avec `HEALTHCHECK`).
+- **Robustesse** : en-têtes de sécurité, limite de charge JSON, arrêt gracieux
+  (SIGTERM/SIGINT), le serveur n'ouvre le port que lancé directement.
+
 ## Architecture multi-agents (orchestrateur + agents spécialisés)
 
 E-Market AI n'est pas une IA monolithique. C'est un **orchestrateur** qui pilote

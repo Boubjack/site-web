@@ -74,6 +74,13 @@ Extensible : `POST /api/ai/core/:engine/:action`, monitoring `GET /api/ai/core/h
 Détails et choix d'architecture (dont « pas de React », build-free) :
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+S'y ajoutent trois moteurs avancés — **AI Client Engine** (comparateur, panier
+par budget, guide des tailles, tenues, Q/R produit, alertes), **AI Operator
+Engine 2.0** (dashboard exécutif, santé, alertes classées, missions, simulateur,
+prévisions, command center) et **AI CTO Engine** (self-check, scores qualité,
+roadmap) — l'IA propose, un humain valide toute action critique. Voir
+[`docs/ENGINES_CLIENT_OPERATOR_CTO.md`](docs/ENGINES_CLIENT_OPERATOR_CTO.md).
+
 ## Architecture multi-agents (orchestrateur + agents spécialisés)
 
 E-Market AI n'est pas une IA monolithique. C'est un **orchestrateur** qui pilote

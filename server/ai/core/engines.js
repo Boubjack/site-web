@@ -35,6 +35,9 @@ const performance = require('../services/performance');
 const accessibility = require('../services/accessibility');
 const brandGuardian = require('../services/brand-guardian');
 const videoAgent = require('../agents/video');
+const clientEngine = require('../services/client-engine');
+const operatorEngine = require('../services/operator-engine');
+const ctoEngine = require('../services/cto-engine');
 const i18n = require('../services/i18n');
 const agents = require('../agents');
 const { store } = require('../../db/store');
@@ -224,6 +227,49 @@ const ENGINES = [
     id: 'translation', name: 'AI Translation Engine', category: 'platform', allowedRoles: null,
     description: 'Traduction FR/EN (bambara préparé).',
     actions: { translate: { description: 'Traduit un texte.', handler: (i) => i18n.translate({ text: String(i.text || ''), target: i.target || 'en' }) } },
+  },
+
+  /* ---------------- CLIENT (Personal Shopping Assistant) ---------------- */
+  {
+    id: 'client', name: 'AI Client Engine', category: 'client', allowedRoles: null,
+    description: 'Assistant d\'achat : comparateur, panier par budget, guide des tailles, tenues, Q/R produit, alertes.',
+    actions: {
+      compare: { description: 'Compare plusieurs produits (avantages/prix/avis/qualité-prix).', handler: (i) => clientEngine.compare(i) },
+      budget: { description: 'Panier optimisé pour un budget.', handler: (i) => clientEngine.budgetBasket(i) },
+      sizeGuide: { description: 'Recommande la bonne taille.', handler: (i) => clientEngine.sizeGuide(i) },
+      outfit: { description: 'Crée une tenue/look complet.', handler: (i) => clientEngine.outfit(i) },
+      productQA: { description: 'Répond aux questions produit (matière, livraison, garantie…).', handler: (i) => clientEngine.productQA(i) },
+      alerts: { description: 'Alertes personnalisées (stock, nouveautés).', handler: (i, ctx) => clientEngine.alerts({ userId: ctx.user ? ctx.user.id : null }) },
+    },
+  },
+
+  /* ---------------- OPERATOR 2.0 (command center) ---------------- */
+  {
+    id: 'operator', name: 'AI Operator Engine 2.0', category: 'operator', allowedRoles: ADMIN,
+    description: 'Centre de pilotage : dashboard, santé, alertes classées, missions, analyses, simulateur, prédictions, command center.',
+    actions: {
+      dashboard: { description: 'Tableau de bord exécutif.', cacheTtlMs: 10000, handler: () => operatorEngine.dashboard() },
+      health: { description: 'Indice de santé marketplace + dimensions.', cacheTtlMs: 15000, handler: () => operatorEngine.health() },
+      alerts: { description: 'Alertes intelligentes classées (critique→faible).', handler: () => operatorEngine.smartAlerts() },
+      missions: { description: 'Centre de missions opérationnelles.', handler: () => operatorEngine.missions() },
+      sellerAnalysis: { description: 'Analyse d\'un vendeur + suggestions.', handler: (i) => operatorEngine.sellerAnalysis(i) },
+      customerAnalysis: { description: 'Segments clients (VIP, fidèles, inactifs, à risque).', handler: () => operatorEngine.customerAnalysis() },
+      simulate: { description: 'Simule une décision (commission, promo, retrait catégorie).', handler: (i) => operatorEngine.simulate(i) },
+      predict: { description: 'Prévisions 7/30/90/365 jours.', handler: (i) => operatorEngine.predict(i) },
+      commandCenter: { description: 'Briefing du fondateur (priorités, urgences, actions).', handler: (i) => operatorEngine.commandCenter(i) },
+    },
+  },
+
+  /* ---------------- CTO (évolution technique) ---------------- */
+  {
+    id: 'cto', name: 'AI CTO Engine', category: 'operator', allowedRoles: ADMIN,
+    description: 'Veille technique : self-check, scores qualité, feuille de route, changelog. Aucun déploiement sans validation.',
+    actions: {
+      selfCheck: { description: 'Audit transverse automatique.', cacheTtlMs: 30000, handler: () => ctoEngine.selfCheck() },
+      qualityScore: { description: 'Scores qualité/sécurité/perf/a11y/UX/stabilité.', handler: () => ctoEngine.qualityScore() },
+      roadmap: { description: 'Feuille de route de propositions.', handler: () => ctoEngine.roadmap() },
+      changelog: { description: 'Résumé d\'une évolution (pour validation).', handler: (i) => ctoEngine.changelog(i) },
+    },
   },
 ];
 

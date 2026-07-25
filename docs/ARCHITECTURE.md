@@ -58,7 +58,12 @@ indépendants** coordonnés par une couche centrale, le **AI Core Engine**.
 **Ajouter un moteur** = pousser un objet dans `engines.js`. Aucun moteur existant
 n'est modifié → architecture **extensible** et **non cassante**.
 
-## Moteurs enregistrés (20)
+## Moteurs enregistrés (23)
+
+> S'ajoutent aux 20 ci-dessous trois moteurs avancés — `client` (Personal
+> Shopping Assistant), `operator` (Command Center 2.0) et `cto` (veille
+> technique) — détaillés dans [`ENGINES_CLIENT_OPERATOR_CTO.md`](ENGINES_CLIENT_OPERATOR_CTO.md).
+
 
 | Moteur | Catégorie | Rôle |
 |---|---|---|

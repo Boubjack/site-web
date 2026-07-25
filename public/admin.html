@@ -82,7 +82,7 @@
     const user = EM.user();
     const links = document.getElementById('nav-links');
     links.innerHTML = user
-      ? `<a href="/">Boutique</a><span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span><a href="#" id="lo">Déconnexion</a>`
+      ? `<a href="/">Boutique</a><a href="/operator.html">🎛️ Command Center</a><span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span><a href="#" id="lo">Déconnexion</a>`
       : '<a href="/">Boutique</a>';
     if (user) links.querySelector('#lo').onclick = (e) => { e.preventDefault(); EM.logout(); };
 

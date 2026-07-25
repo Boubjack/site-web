@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Market — Command Center</title>
+  <meta name="theme-color" content="#08080a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a90ff'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='800' fill='white' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/css/emarket.css" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <script>try{var t=localStorage.getItem("emarket_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <style>
+    .cc-hero { padding: 26px; border-radius: var(--r-lg); background: linear-gradient(150deg, var(--bleu-soft), transparent); border: 1px solid var(--glass-border); margin-bottom: 20px; }
+    .cc-hero h2 { font-family: var(--font-display); font-size: 1.5rem; }
+    .cc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+    .cc-stat { background: var(--glass-strong); border: 1px solid var(--glass-border); border-radius: var(--r); padding: 14px 16px; }
+    .cc-stat .l { color: var(--text-2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; }
+    .cc-stat .v { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; margin-top: 4px; }
+    .gauge { --p: 0; width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto;
+      background: conic-gradient(var(--bleu) calc(var(--p) * 1%), var(--noir-3) 0); }
+    .gauge .in { width: 92px; height: 92px; border-radius: 50%; background: var(--noir-2); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; }
+    .alert-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--glass-border); font-size: 0.88rem; }
+    .sev { font-size: 0.66rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; }
+    .sev.critique { background: rgba(240,68,56,0.16); color: #ff6b60; }
+    .sev.eleve { background: rgba(245,165,36,0.16); color: var(--jaune); }
+    .sev.moyen { background: rgba(42,144,255,0.16); color: var(--bleu-2); }
+    .sev.faible { background: rgba(255,255,255,0.08); color: var(--text-2); }
+    .mission { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--glass-border); font-size: 0.86rem; }
+    .prio { font-size: 0.64rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+    .prio.haute { background: rgba(240,68,56,0.16); color: #ff6b60; }
+    .prio.moyenne { background: rgba(245,165,36,0.16); color: var(--jaune); }
+    .prio.basse { background: rgba(255,255,255,0.08); color: var(--text-2); }
+    .score-pill { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; background: var(--glass-strong); border: 1px solid var(--glass-border); border-radius: var(--r); padding: 12px 8px; }
+    .score-pill .n { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; }
+    .score-pill .k { font-size: 0.66rem; color: var(--text-2); text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="/"><span>Market</span></a>
+    <span class="ai-tag">🎛️ Command Center · E-Market AI</span>
+    <div class="links" id="nav-links"></div>
+  </nav>
+
+  <main class="dash">
+    <div id="gate" class="panel glass" style="display:none;text-align:center">
+      <h3>Accès réservé (admin / fondateur)</h3>
+      <p class="sub">Connectez-vous en admin (démo : admin@emarket.ml / admin123) depuis la <a href="/" style="color:var(--bleu)">page d'accueil</a>.</p>
+    </div>
+
+    <div id="board" style="display:none">
+      <!-- Briefing fondateur -->
+      <section class="cc-hero" id="cc-briefing">
+        <div class="ai-tag" style="margin-bottom:8px">✨ Briefing du jour</div>
+        <h2 id="cc-greeting">Chargement…</h2>
+        <div class="cc-stats" id="cc-keystats"></div>
+      </section>
+
+      <div class="dash-grid">
+        <!-- Santé + prévision -->
+        <section class="panel glass">
+          <h3>❤️ Santé de la marketplace</h3>
+          <div class="gauge" id="cc-gauge" style="margin:16px auto"><div class="in" id="cc-gauge-n">—</div></div>
+          <div id="cc-health-dims" style="margin-top:14px;font-size:0.82rem"></div>
+        </section>
+
+        <!-- Alertes -->
+        <section class="panel glass">
+          <h3>🚨 Alertes intelligentes</h3>
+          <p class="sub" id="cc-alert-sum"></p>
+          <div id="cc-alerts"></div>
+        </section>
+
+        <!-- Missions -->
+        <section class="panel glass">
+          <h3>🎯 Centre de missions</h3>
+          <p class="sub">Préparées par l'IA — exécution validée par un opérateur.</p>
+          <div id="cc-missions"></div>
+        </section>
+
+        <!-- KPIs exécutifs -->
+        <section class="panel glass" style="grid-column: 1 / -1">
+          <h3>📊 Tableau de bord exécutif</h3>
+          <div class="cc-stats" id="cc-dashboard"></div>
+        </section>
+
+        <!-- Prévisions -->
+        <section class="panel glass">
+          <h3>🔮 Prévisions</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0" id="cc-horizons"></div>
+          <div id="cc-predict"></div>
+        </section>
+
+        <!-- CTO -->
+        <section class="panel glass">
+          <h3>🛠️ AI CTO — self-check</h3>
+          <div id="cc-cto-scores" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:8px;margin:12px 0"></div>
+          <div id="cc-cto-areas" style="font-size:0.82rem"></div>
+        </section>
+
+        <!-- Opportunités + actions recommandées -->
+        <section class="panel glass" style="grid-column: 1 / -1">
+          <h3>💡 Opportunités & actions recommandées</h3>
+          <p class="sub">Toute action à impact requiert votre validation.</p>
+          <div id="cc-actions"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const user = EM.user();
+    const links = document.getElementById('nav-links');
+    links.innerHTML = user
+      ? `<a href="/">Boutique</a><a href="/admin.html">Admin</a><span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span><a href="#" id="lo">Déconnexion</a>`
+      : '<a href="/">Boutique</a>';
+    if (user) links.querySelector('#lo').onclick = (e) => { e.preventDefault(); EM.logout(); };
+
+    if (!user || user.role !== 'admin') {
+      document.getElementById('gate').style.display = 'block';
+    } else {
+      document.getElementById('board').style.display = 'block';
+      init();
+    }
+
+    // Invocation d'un moteur via le Core, avec une nouvelle tentative en cas
+    // d'erreur réseau transitoire (ex. service worker qui prend le contrôle).
+    async function engine(name, action, body = {}) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          return await EM.api(`/api/ai/core/${name}/${action}`, { method: 'POST', body });
+        } catch (err) {
+          if (attempt === 2 || /Erreur \d/.test(err.message)) throw err; // erreur HTTP → on ne réessaie pas
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+    }
+
+    // Chargement SÉQUENTIEL + résilient : un panneau en erreur n'affecte pas les autres.
+    async function safe(fn, label) {
+      try { await fn(); } catch (err) { console.warn(label, err.message); }
+    }
+    async function init() {
+      await safe(loadBriefing, 'briefing');
+      await safe(loadHealth, 'health');
+      await safe(loadAlerts, 'alerts');
+      await safe(loadMissions, 'missions');
+      await safe(loadDashboard, 'dashboard');
+      await safe(() => loadPredict(30), 'predict');
+      await safe(loadCto, 'cto');
+    }
+
+    async function loadBriefing() {
+      const c = await engine('operator', 'commandCenter', { name: user.name });
+      document.getElementById('cc-greeting').textContent = c.greeting;
+      const s = c.keyStats;
+      const cards = [
+        ['CA du mois', EM.fcfa(s.caMoisFcfa)],
+        ['Commandes', s.commandes],
+        ['Conversion', s.conversionPct === null ? 'n/a' : s.conversionPct + ' %'],
+        ['Santé', s.santeGlobale + '/100'],
+        ['Croissance', s.croissancePct === null ? 'n/a' : s.croissancePct + ' %'],
+      ];
+      document.getElementById('cc-keystats').innerHTML = cards.map(([l, v]) => `<div class="cc-stat"><div class="l">${l}</div><div class="v">${EM.esc(String(v))}</div></div>`).join('');
+      // Actions recommandées
+      document.getElementById('cc-actions').innerHTML =
+        (c.opportunites.length ? `<div style="margin-bottom:12px"><b>Opportunités</b><ul style="margin:6px 0 0 18px;color:var(--gris);font-size:0.86rem">${c.opportunites.map((o) => `<li>${EM.esc(o)}</li>`).join('')}</ul></div>` : '') +
+        c.actionsRecommandees.map((a) => `<div class="mission"><span class="prio moyenne">à valider</span><div style="flex:1">${EM.esc(a.action)} <span style="color:var(--gris)">— ${EM.esc(String(a.impact || ''))}</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="EM.toast('Validation requise — action non exécutée automatiquement.')">Examiner</button></div>`).join('') || '<p style="color:var(--vert)">✅ Rien d\'urgent.</p>';
+    }
+
+    async function loadHealth() {
+      const h = await engine('operator', 'health');
+      const g = document.getElementById('cc-gauge');
+      g.style.setProperty('--p', h.globalScore);
+      document.getElementById('cc-gauge-n').textContent = h.globalScore;
+      document.getElementById('cc-health-dims').innerHTML = Object.entries(h.dimensions)
+        .filter(([, v]) => v !== null)
+        .map(([k, v]) => `<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--gris)">${EM.esc(k)}</span><b>${v}</b></div>`).join('');
+    }
+
+    async function loadAlerts() {
+      const a = await engine('operator', 'alerts');
+      document.getElementById('cc-alert-sum').textContent = `${a.summary.critique} critique · ${a.summary.eleve} élevé · ${a.summary.moyen} moyen`;
+      document.getElementById('cc-alerts').innerHTML = a.alerts.length
+        ? a.alerts.map((x) => `<div class="alert-row"><span class="sev ${x.level}">${x.level}</span><span>${EM.esc(x.message)}</span></div>`).join('')
+        : '<p style="color:var(--vert)">✅ Aucune alerte.</p>';
+    }
+
+    async function loadMissions() {
+      const m = await engine('operator', 'missions');
+      document.getElementById('cc-missions').innerHTML = m.missions.map((x) => `<div class="mission">
+        <span class="prio ${x.priority}">${x.priority}</span><div style="flex:1">${EM.esc(x.title)}<div style="color:var(--gris);font-size:0.76rem">${EM.esc(x.estimatedImpact)} · ~${x.estimatedTimeMin} min</div></div></div>`).join('');
+    }
+
+    async function loadDashboard() {
+      const d = await engine('operator', 'dashboard');
+      const cards = [
+        ['CA jour', EM.fcfa(d.revenue.dayFcfa)], ['CA semaine', EM.fcfa(d.revenue.weekFcfa)],
+        ['CA mois', EM.fcfa(d.revenue.monthFcfa)], ['CA année', EM.fcfa(d.revenue.yearFcfa)],
+        ['Commissions', EM.fcfa(d.commissionsMonthFcfa)], ['Panier moyen', EM.fcfa(d.averageOrderFcfa)],
+        ['Cmd. en attente', d.orders.enAttente], ['Cmd. terminées', d.orders.terminees],
+        ['Clients', d.customers.total], ['Vendeurs actifs', d.sellers.actifs], ['Produits', d.catalog.produits],
+        ['Stock faible', d.catalog.stockFaible],
+      ];
+      document.getElementById('cc-dashboard').innerHTML = cards.map(([l, v]) => `<div class="cc-stat"><div class="l">${l}</div><div class="v">${EM.esc(String(v))}</div></div>`).join('');
+    }
+
+    async function loadPredict(h) {
+      const tabs = document.getElementById('cc-horizons');
+      tabs.innerHTML = [7, 30, 90, 365].map((x) => `<button class="quick-btn ${x === h ? 'active' : ''}" data-h="${x}" style="--accent:#2a90ff">${x} j</button>`).join('');
+      tabs.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => loadPredict(+b.dataset.h)));
+      const p = await engine('operator', 'predict', { horizon: h });
+      document.getElementById('cc-predict').innerHTML =
+        `<div class="cc-stat" style="margin-bottom:8px"><div class="l">CA projeté (${h} j)</div><div class="v">${EM.fcfa(p.projectedRevenueFcfa)}</div></div>
+         <div style="font-size:0.84rem;color:var(--gris)">Tendance : <b style="color:var(--text)">${EM.esc(p.trend)}</b> · ${EM.esc(p.note)}</div>`;
+    }
+
+    async function loadCto() {
+      const [sc, qs] = await Promise.all([engine('cto', 'selfCheck'), engine('cto', 'qualityScore')]);
+      document.getElementById('cc-cto-scores').innerHTML = Object.entries(qs).map(([k, v]) => `<div class="score-pill"><span class="n">${v}</span><span class="k">${EM.esc(k)}</span></div>`).join('');
+      document.getElementById('cc-cto-areas').innerHTML = `<div style="margin-bottom:8px;color:var(--vert)">${EM.esc(sc.summary)}</div>` +
+        sc.areas.map((a) => `<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--gris)">${EM.esc(a.area)}</span><b>${a.status === 'ok' ? '✅' : '⚠️'} ${EM.esc(a.detail)}</b></div>`).join('');
+    }
+  </script>
+</body>
+</html>

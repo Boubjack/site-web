@@ -271,6 +271,29 @@ const ENGINES = [
       changelog: { description: 'Résumé d\'une évolution (pour validation).', handler: (i) => ctoEngine.changelog(i) },
     },
   },
+  {
+    id: 'ceo', name: 'AI CEO Engine', category: 'operator', allowedRoles: ADMIN,
+    description: 'Conseiller stratégique : briefing exécutif, priorités, simulations, coordination des moteurs.',
+    actions: {
+      briefing: { description: 'Briefing stratégique (santé, priorités, synthèse).', cacheTtlMs: 15000, handler: (i, ctx) => agents.run('ceo', { days: i.days || 30 }, { user: ctx.user }) },
+      strategy: {
+        description: 'Recommandations stratégiques + prévision.',
+        handler: async (i, ctx, core) => ({
+          briefing: await agents.run('ceo', { days: 30 }, { user: ctx.user }),
+          prediction: operatorEngine.predict({ horizon: i.horizon || 30 }),
+          coordination: core.list(ctx.user).reduce((acc, e) => { (acc[e.category] = acc[e.category] || []).push(e.id); return acc; }, {}),
+        }),
+      },
+    },
+  },
+  {
+    id: 'observability', name: 'AI Observability Center', category: 'platform', allowedRoles: ADMIN,
+    description: 'Supervision du Core : santé, métriques, cache, événements.',
+    actions: {
+      status: { description: 'État de santé complet du Core.', handler: (i, ctx, core) => core.health() },
+      metrics: { description: 'Métriques d\'appels par moteur.', handler: (i, ctx, core) => core.metrics.snapshot() },
+    },
+  },
 ];
 
 // Catalogue de composants (familles + variantes) exposé par le Component Engine.

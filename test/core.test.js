@@ -105,3 +105,11 @@ test('POST /core : moteur admin refusé au client (403)', async () => {
   const { status } = await api(url, '/api/ai/core/fraud/overview', { method: 'POST', token, body: {} });
   assert.equal(status, 403);
 });
+
+test('moteurs ceo + observability enregistrés et fonctionnels', async () => {
+  const admin = { user: { role: 'admin', id: 'u-admin' } };
+  const briefing = await core.run('ceo', 'briefing', {}, admin);
+  assert.ok(briefing.headline);
+  const status = await core.run('observability', 'status', {}, admin);
+  assert.ok(status.engines.total >= 25);
+});

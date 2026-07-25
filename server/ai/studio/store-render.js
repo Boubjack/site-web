@@ -87,8 +87,10 @@ function css(bp) {
   .news input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:12px 18px;color:var(--text)}
   footer{border-top:1px solid var(--border);padding:44px 0;color:var(--soft);margin-top:20px}
   .fcol{display:flex;flex-wrap:wrap;gap:40px;justify-content:space-between}
-  .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
-  .reveal.in{opacity:1;transform:none}
+  .reveal{opacity:1;transform:none} /* visible par défaut (SEO / a11y / sans JS) */
+  .reveal.armed{opacity:0;transform:translateY(22px)}
+  .reveal.in{opacity:1;transform:none;transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  @media(prefers-reduced-motion:reduce){.reveal,.reveal.armed{opacity:1!important;transform:none!important}}
   .badge{position:fixed;left:14px;bottom:14px;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:8px 14px;font-size:.72rem;color:var(--soft)}
   @media(max-width:640px){.nav .menu{display:none}.card .im{height:170px;font-size:3.4rem}.hero{padding:56px 0}}
   `;
@@ -103,27 +105,52 @@ function cardHtml(p) {
     </div></article>`;
 }
 
+// Contenu éditorial distinct par type de section (évite toute répétition).
+const FEATURE_CONTENT = {
+  ingredients: { title: 'Nos ingrédients', sub: 'Sélectionnés avec soin', bullets: ['Actifs d\'origine naturelle', 'Formules sans compromis', 'Traçabilité complète'] },
+  bienfaits: { title: 'Les bienfaits', sub: 'Ce que vous allez adorer', bullets: ['Résultats visibles', 'Confort au quotidien', 'Adapté à chaque peau'] },
+  'specs-cles': { title: 'Caractéristiques clés', sub: 'La technique en un coup d\'œil', bullets: ['Performance de pointe', 'Autonomie longue durée', 'Garantie incluse'] },
+  'savoir-faire': { title: 'Notre savoir-faire', sub: 'Une exigence artisanale', bullets: ['Fait main à Bamako', 'Matériaux nobles', 'Finitions soignées'] },
+  ambiance: { title: "L'ambiance", sub: 'Vivez l\'expérience', bullets: ['Cadre chaleureux', 'Accueil attentionné', 'Moments à partager'] },
+  routine: { title: 'Votre routine', sub: 'Simple et efficace', bullets: ['Matin : éclat', 'Soir : réparation', 'Hebdo : soin intense'] },
+  'avant-apres': { title: 'Avant / Après', sub: 'La différence se voit', bullets: ['Peau visiblement lissée', 'Teint unifié', 'Résultats durables'] },
+  editorial: { title: 'Le journal', sub: 'Inspirations & conseils', bullets: ['Tendances de saison', 'Guides de style', 'Coulisses de la marque'] },
+  comparateur: { title: 'Comparez', sub: 'Trouvez le bon modèle', bullets: ['Par usage', 'Par budget', 'Par performance'] },
+  accessoires: { title: 'Accessoires', sub: 'Complétez votre équipement', bullets: ['Protection', 'Recharge', 'Connectique'] },
+  reservation: { title: 'Réservez votre table', sub: 'En quelques clics', bullets: ['Choisissez la date', 'Indiquez le nombre', 'Confirmation immédiate'] },
+  'sur-mesure': { title: 'Sur-mesure', sub: 'Une pièce rien qu\'à vous', bullets: ['Gravure personnalisée', 'Choix des matériaux', 'Accompagnement dédié'] },
+  'edition-limitee': { title: 'Édition limitée', sub: 'Pièces rares, tirage restreint', bullets: ['Séries numérotées', 'Disponibilité éphémère', 'Certificat inclus'] },
+  'horaires-acces': { title: 'Horaires & accès', sub: 'Venez nous voir', bullets: ['Ouvert 7j/7', 'En plein centre de Bamako', 'Parking à proximité'] },
+  avantages: { title: 'Nos avantages', sub: 'Pourquoi nous choisir', bullets: ['Qualité vérifiée', 'Livraison 24-72h', 'Paiement Orange Money · Wave · livraison'] },
+  bienvenue: { title: 'Bienvenue', sub: '', bullets: ['Qualité vérifiée', 'Livraison rapide', 'Paiement local'] },
+};
+
 function sectionMarket(key, bp, products) {
   const grid = (list) => `<div class="grid">${list.map(cardHtml).join('')}</div>`;
   const head = (title, sub) => `<div class="sec-head"><div><span class="pill">${esc(bp.sectorLabel)}</span><h2 style="margin-top:10px">${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div></div>`;
-  switch (key) {
-    case 'nouveautes': return `<section class="wrap reveal">${head('Nouveautés', 'Les dernières arrivées')}${grid(products.slice(0, 8))}</section>`;
-    case 'bestsellers': return `<section class="wrap reveal">${head('Best-sellers', 'Les préférés de nos clients')}${grid(products.slice(0, 4))}</section>`;
-    case 'lookbook': case 'collections': case 'signature': case 'plats-signature': case 'menu':
-      return `<section class="wrap reveal">${head(bp.sector === 'restaurant' ? 'Notre menu' : 'Collections', '')}${grid(products.slice(0, 8))}</section>`;
-    case 'categories': {
-      const cats = [...new Set(products.map((p) => p.subcategory || p.category).filter(Boolean))].slice(0, 8);
-      return `<section class="wrap reveal">${head('Catégories', 'Explorez la boutique')}<div class="tiles">${cats.map((c) => `<a class="tile"><div class="ic">✦</div><div style="margin-top:8px;font-weight:600">${esc(c)}</div></a>`).join('')}</div></section>`;
-    }
-    case 'ingredients': case 'bienfaits': case 'specs-cles': case 'savoir-faire': case 'ambiance': case 'routine': case 'avant-apres': case 'editorial': case 'comparateur': case 'accessoires': case 'reservation': case 'sur-mesure': case 'edition-limitee': case 'horaires-acces': case 'avantages': {
-      const labels = { ingredients: 'Nos ingrédients', bienfaits: 'Les bienfaits', 'specs-cles': 'Caractéristiques clés', 'savoir-faire': 'Notre savoir-faire', ambiance: "L'ambiance", routine: 'Votre routine', 'avant-apres': 'Avant / Après', editorial: 'Le journal', comparateur: 'Comparez', accessoires: 'Accessoires', reservation: 'Réservez', 'sur-mesure': 'Sur-mesure', 'edition-limitee': 'Édition limitée', 'horaires-acces': 'Horaires & accès', avantages: 'Nos avantages' };
-      return `<section class="wrap reveal">${head(labels[key] || key, '')}<div class="bands">
-        <div class="band"><b>✓</b> Qualité vérifiée et sélection exigeante</div>
-        <div class="band"><b>✓</b> Livraison 24-72h à Bamako</div>
-        <div class="band"><b>✓</b> Paiement Orange Money · Wave · à la livraison</div></div></section>`;
-    }
-    default: return '';
+  const gridHeads = {
+    nouveautes: ['Nouveautés', 'Les dernières arrivées'], bestsellers: ['Best-sellers', 'Les préférés de nos clients'],
+    lookbook: ['Lookbook', 'La saison en images'], collections: ['Collections', 'Nos univers'],
+    signature: ['Pièces signature', 'L\'essence de la maison'], 'plats-signature': ['Plats signature', 'Nos incontournables'],
+    menu: ['Notre carte', 'À déguster'],
+  };
+  if (gridHeads[key]) {
+    const [title, sub] = gridHeads[key];
+    // Tranches différentes selon la section → évite d'afficher deux fois la même grille.
+    const offset = key === 'bestsellers' ? 0 : key === 'signature' ? 4 : key === 'collections' ? 2 : 0;
+    const slice = key === 'bestsellers' ? products.slice(0, 4) : products.slice(offset).concat(products.slice(0, offset)).slice(0, 8);
+    return `<section class="wrap reveal">${head(title, sub)}${grid(slice)}</section>`;
   }
+  if (key === 'categories') {
+    const cats = [...new Set(products.map((p) => p.subcategory || p.category).filter(Boolean))].slice(0, 8);
+    return `<section class="wrap reveal">${head('Catégories', 'Explorez la boutique')}<div class="tiles">${cats.map((c) => `<a class="tile"><div class="ic">✦</div><div style="margin-top:8px;font-weight:600">${esc(c)}</div></a>`).join('')}</div></section>`;
+  }
+  const f = FEATURE_CONTENT[key];
+  if (f) {
+    return `<section class="wrap reveal">${head(f.title, f.sub)}<div class="bands">
+      ${f.bullets.map((b) => `<div class="band"><b>✦</b> ${esc(b)}</div>`).join('')}</div></section>`;
+  }
+  return '';
 }
 
 /** Rend la boutique complète en HTML autonome. */
@@ -198,8 +225,18 @@ ${marketing}
 
 <div class="badge">✨ ${esc(bp.name)} — boutique générée par E-Market AI</div>
 <script>
-  const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
-  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+  // Animation d'entrée en PROGRESSIVE ENHANCEMENT : le contenu est visible par
+  // défaut ; on ne l'anime que si le mouvement est autorisé, avec un filet de
+  // sécurité qui garantit l'affichage même sans déclenchement d'observer.
+  const reveals=[...document.querySelectorAll('.reveal')];
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce && 'IntersectionObserver' in window){
+    reveals.forEach(el=>el.classList.add('armed'));
+    const show=el=>{el.classList.remove('armed');el.classList.add('in')};
+    const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){show(e.target);io.unobserve(e.target)}}),{threshold:.12,rootMargin:'0px 0px -6% 0px'});
+    reveals.forEach(el=>io.observe(el));
+    setTimeout(()=>reveals.forEach(show),1600); // filet de sécurité
+  }
   document.querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>{if(c.dataset.id)location.href='/?p='+encodeURIComponent(c.dataset.id)}));
 </script>
 </body></html>`;

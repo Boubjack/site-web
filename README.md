@@ -53,6 +53,12 @@ Additives, responsives, sans casser le design « Premium Noir » :
 - **Paiements locaux** : Orange Money, Moov Money, Wave, paiement à la livraison.
 - **IA Boutique** : thème de boutique complet généré par catégorie (mode, luxe,
   cosmétique, automobile, électronique, alimentation…), fusionné au Brand Kit.
+- **Générateur de boutiques IA premium** : à partir d'un brief (catégorie, public,
+  positionnement, couleurs, marque…), génère **3 boutiques complètes, originales
+  et distinctes** (pages, composants, animations, contenu), adaptées au secteur,
+  et les **rend réellement** sur `/shop/:sellerId`. Aucune copie de site/thème —
+  couleurs et mises en page générées par calcul. Voir
+  [`docs/STORE_GENERATOR.md`](docs/STORE_GENERATOR.md).
 
 Cartographie de **chaque** outil open source (intégré / adaptateur / feuille de
 route) : [`docs/OPEN_SOURCE_STACK.md`](docs/OPEN_SOURCE_STACK.md).

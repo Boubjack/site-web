@@ -69,6 +69,24 @@
         </div>
       </section>
 
+      <!-- GÉNÉRATEUR DE BOUTIQUE IA PREMIUM -->
+      <section class="panel glass" style="grid-column: 1 / -1;border:1px solid rgba(42,144,255,0.35)">
+        <h3>🏗️ Générateur de boutique IA <span class="ai-tag">qualité agence</span></h3>
+        <p class="sub">Répondez au brief : l'IA génère 3 boutiques complètes, originales et différentes (accueil, catalogue, fiches, panier, animations…). Design unique par vendeur — aucune copie de site existant.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="sg-grid">
+          <div class="field"><label>Catégorie</label><select id="sg-category"></select></div>
+          <div class="field"><label>Sous-catégorie</label><input id="sg-subcategory" placeholder="Ex : robes de soirée" /></div>
+          <div class="field"><label>Public cible</label><input id="sg-audience" placeholder="Ex : femmes 20-40 ans" /></div>
+          <div class="field"><label>Positionnement</label><select id="sg-positioning"></select></div>
+          <div class="field"><label>Style souhaité</label><input id="sg-style" placeholder="Ex : élégant, moderne" /></div>
+          <div class="field"><label>Couleur préférée</label><input id="sg-color" type="color" value="#2a90ff" style="height:42px;padding:4px" /></div>
+          <div class="field" style="grid-column:1 / -1"><label>Description de la marque</label><textarea id="sg-description" rows="2" placeholder="Ex : mode féminine contemporaine, faite à Bamako"></textarea></div>
+          <div class="field"><label><input type="checkbox" id="sg-logo" style="width:auto"> J'ai un logo</label></div>
+        </div>
+        <button class="btn btn-bleu btn-lg" id="sg-run" style="width:100%">🏗️ Générer 3 propositions de boutique</button>
+        <div id="sg-out" style="display:none;margin-top:16px"></div>
+      </section>
+
       <!-- 4. Générer une annonce IA -->
       <section class="panel glass">
         <h3>📝 Générer une annonce IA</h3>
@@ -216,6 +234,14 @@
       // Creative Studio — « Créer ma campagne » + « 5 variantes ».
       document.getElementById('cs-run').addEventListener('click', (e) => run(e.target, createCampaign));
       document.getElementById('ph-variants').addEventListener('click', (e) => run(e.target, generateVariants));
+
+      // Générateur de boutique IA — options + génération.
+      try {
+        const so = await EM.api('/api/ai/studio/store/options');
+        document.getElementById('sg-category').innerHTML = so.sectors.map((s) => `<option value="${s.id}">${EM.esc(s.label)}</option>`).join('');
+        document.getElementById('sg-positioning').innerHTML = so.positionings.map((p) => `<option${p === 'Premium' ? ' selected' : ''}>${EM.esc(p)}</option>`).join('');
+      } catch { /* ignore */ }
+      document.getElementById('sg-run').addEventListener('click', (e) => run(e.target, generateStore));
 
       // Curseur durée vidéo
       const dur = document.getElementById('v-duration');
@@ -415,6 +441,48 @@
         `5 VARIANTES PHOTO (angle · lumière · scène · décor différents)\n════════════════════════════════════════════\n` +
         r.variants.map((v) => `Variante ${v.index} — ${v.resolutionLabel}\n  • Angle      : ${v.angle}\n  • Lumière    : ${v.lighting}\n  • Composition: ${v.composition}\n  • Décor      : ${v.decor}`).join('\n\n') +
         (r.brandKit ? `\n\nIdentité appliquée : ${r.brandKit.brand} · ${r.brandKit.positioning}` : ''));
+    }
+
+    // ---------- Générateur de boutique IA ----------
+    async function generateStore() {
+      const brief = {
+        category: document.getElementById('sg-category').value,
+        subcategory: document.getElementById('sg-subcategory').value,
+        audience: document.getElementById('sg-audience').value,
+        positioning: document.getElementById('sg-positioning').value,
+        style: document.getElementById('sg-style').value,
+        colors: [document.getElementById('sg-color').value],
+        hasLogo: document.getElementById('sg-logo').checked,
+        description: document.getElementById('sg-description').value,
+      };
+      const { proposals, previewBase } = await EM.api('/api/ai/studio/store', { method: 'POST', body: brief });
+      const out = document.getElementById('sg-out');
+      out.style.display = 'block';
+      out.innerHTML = `<div style="color:var(--bleu);font-weight:700;margin-bottom:12px">✨ 3 boutiques originales générées — prévisualisez et choisissez :</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+        ${proposals.map((p) => {
+          const pal = p.designSystem.palette;
+          return `<div class="glass" style="border-radius:16px;overflow:hidden;border:1px solid var(--glass-border)">
+            <div style="height:76px;background:${pal.gradient}"></div>
+            <div style="padding:14px">
+              <div style="font-weight:700">${EM.esc(p.name)}</div>
+              <div style="color:var(--gris);font-size:0.78rem;margin:6px 0 10px">${EM.esc(p.pitch)}</div>
+              <div style="display:flex;gap:6px;margin-bottom:12px">
+                ${[pal.accent, pal.accent2, pal.bg, pal.surface].map((c) => `<span style="width:20px;height:20px;border-radius:50%;background:${c};border:1px solid var(--glass-border)"></span>`).join('')}
+              </div>
+              <div style="display:flex;gap:8px">
+                <a class="btn btn-ghost btn-sm" href="${previewBase}?proposal=${p.proposal}" target="_blank" rel="noopener">👁 Prévisualiser</a>
+                <button class="btn btn-bleu btn-sm" data-choose="${p.proposal}">✓ Choisir</button>
+              </div>
+            </div></div>`;
+        }).join('')}</div>`;
+      out.querySelectorAll('[data-choose]').forEach((b) => b.addEventListener('click', async () => {
+        try {
+          const { url } = await EM.api('/api/ai/studio/store/select', { method: 'POST', body: { proposal: +b.dataset.choose } });
+          EM.toast('🏪 Boutique publiée ! Ouverture de l\'aperçu…', 'success');
+          window.open(url, '_blank', 'noopener');
+        } catch (err) { EM.toast(err.message); }
+      }));
     }
 
     function summarizeStep(st) {

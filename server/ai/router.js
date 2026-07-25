@@ -19,6 +19,7 @@ const studioJobs = require('./studio/jobs');
 const brandkit = require('./studio/brandkit');
 const creative = require('./studio/creative');
 const shopTheme = require('./studio/theme');
+const storebuilder = require('./studio/storebuilder');
 const photoAgent = require('./agents/photo');
 const videoAgent = require('./agents/video');
 const recommender = require('./services/recommender');
@@ -32,6 +33,7 @@ const analytics = require('./services/analytics');
 const memory = require('./services/memory');
 const i18n = require('./services/i18n');
 const discovery = require('./services/discovery');
+const { store } = require('../db/store');
 
 const router = express.Router();
 
@@ -298,6 +300,45 @@ router.get('/studio/theme', requireRole('seller', 'admin'), (req, res) => {
   const sellerId = req.user.role === 'admin' ? (req.query.sellerId || req.user.id) : req.user.id;
   res.json({ theme: shopTheme.generate({ category: req.query.category || 'mode', sellerId }), categories: shopTheme.categories() });
 });
+
+/* ---- Générateur de boutiques IA premium (propositions originales) ---- */
+function sellerIdOf(req) { return req.user.role === 'admin' ? (req.body.sellerId || req.query.sellerId || req.user.id) : req.user.id; }
+
+router.get('/studio/store/options', requireRole('seller', 'admin'), (_req, res) => {
+  res.json({
+    sectors: Object.entries(storebuilder.SECTORS).map(([id, v]) => ({ id, label: v.label })),
+    directions: storebuilder.DIRECTIONS.map((d) => ({ id: d.id, name: d.name, pitch: d.pitch })),
+    positionings: ['Économique', 'Premium', 'Luxe'],
+  });
+});
+
+// Génère (ou régénère) 3 propositions originales à partir du brief, et les mémorise.
+router.post('/studio/store', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {
+  const b = req.body || {};
+  const brief = {
+    category: String(b.category || '').slice(0, 40), subcategory: String(b.subcategory || '').slice(0, 60),
+    audience: String(b.audience || '').slice(0, 80), positioning: String(b.positioning || 'Premium').slice(0, 30),
+    style: String(b.style || '').slice(0, 60), colors: Array.isArray(b.colors) ? b.colors.slice(0, 3) : (b.color ? [b.color] : []),
+    hasLogo: Boolean(b.hasLogo), brandName: String(b.brandName || '').slice(0, 60), description: String(b.description || '').slice(0, 600),
+  };
+  const proposals = storebuilder.generateProposals(brief, 3);
+  const sellerId = sellerIdOf(req);
+  const existing = store.findOne('storeBlueprints', (d) => d.sellerId === sellerId);
+  const doc = { sellerId, brief, proposals, selectedProposal: null };
+  if (existing) store.update('storeBlueprints', existing.id, doc); else store.insert('storeBlueprints', doc);
+  res.json({ proposals, previewBase: `/shop/${sellerId}` });
+}));
+
+// Choisit la proposition préférée (devient la boutique publiée du vendeur).
+router.post('/studio/store/select', requireRole('seller', 'admin'), asyncHandler(async (req, res) => {
+  const sellerId = sellerIdOf(req);
+  const n = parseInt(req.body.proposal, 10);
+  const doc = store.findOne('storeBlueprints', (d) => d.sellerId === sellerId);
+  if (!doc) throw new ApiError(404, 'Aucune boutique générée. Générez d\'abord des propositions.');
+  if (!doc.proposals.some((p) => p.proposal === n)) throw new ApiError(400, 'Proposition invalide.');
+  store.update('storeBlueprints', doc.id, { selectedProposal: n });
+  res.json({ ok: true, selectedProposal: n, url: `/shop/${sellerId}` });
+}));
 
 // AI Smart Workflow — « Créer ma campagne » (pack complet, identité respectée).
 router.post('/studio/campaign', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {

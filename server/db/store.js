@@ -17,7 +17,7 @@ const DATA_DIR = process.env.EMARKET_DATA_DIR || path.join(__dirname, 'data');
 const COLLECTIONS = [
   'users', 'products', 'orders', 'reviews',
   'events', 'aiMemory', 'mediaJobs', 'supportTickets',
-  'aiConversations', 'moderationFlags', 'brandKits',
+  'aiConversations', 'moderationFlags', 'brandKits', 'storeBlueprints',
 ];
 
 const cache = {};

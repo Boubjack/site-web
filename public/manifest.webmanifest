@@ -1,0 +1,16 @@
+{
+  "name": "E-Market — la marketplace intelligente",
+  "short_name": "E-Market",
+  "description": "Marketplace intelligente d'Afrique de l'Ouest, propulsée par E-Market AI.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "categories": ["shopping", "business"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -60,6 +60,9 @@ app.use('/api/orders', require('./routes/orders'));
 // Module E-Market AI (indépendant)
 app.use('/api/ai', require('./ai/router'));
 
+// SEO technique (robots, sitemap, pages produit crawlables).
+app.use(require('./routes/seo'));
+
 // Frontend statique
 app.use(express.static(path.join(__dirname, '..', 'public')));
 

@@ -7,6 +7,7 @@ const provider = require('../provider/llm');
 const catalog = require('./catalog');
 const recommender = require('./recommender');
 const vectors = require('./vectors');
+const suggestSvc = require('./suggest');
 
 const INTENT_SCHEMA = {
   type: 'object',
@@ -79,8 +80,17 @@ async function search(query, { userId } = {}) {
     limit: 12,
   });
   let semantic = false;
+  let correction = null;
+  // Tolérance aux fautes : si rien ne sort, on tente la requête corrigée.
+  if (!results.length) {
+    const fix = suggestSvc.correct(query);
+    if (fix.changed) {
+      const retry = catalog.searchProducts({ query: fix.corrected, limit: 12 });
+      if (retry.length) { results = retry; correction = fix.corrected; }
+    }
+  }
   // Repli sémantique (compatible FAISS) quand la recherche lexicale ne
-  // rapporte rien : on comprend le sens même sans mot-clé exact.
+  // rapporte toujours rien : on comprend le sens même sans mot-clé exact.
   if (!results.length) {
     const hits = vectors.semanticSearch(intent.keywords || query, {
       limit: 12,
@@ -92,7 +102,7 @@ async function search(query, { userId } = {}) {
     }
   }
   if (userId) recommender.trackEvent({ userId, type: 'search', query });
-  return { intent, results, semantic };
+  return { intent, results, semantic, correction };
 }
 
 module.exports = { search, parseIntent };

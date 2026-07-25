@@ -7,6 +7,17 @@ const recommender = require('../ai/services/recommender');
 
 const router = express.Router();
 
+// Moyens de paiement locaux (Afrique de l'Ouest) — les seuls acceptés.
+const PAYMENT_METHODS = {
+  'orange-money': 'Orange Money',
+  'moov-money': 'Moov Money',
+  wave: 'Wave',
+  cod: 'Paiement à la livraison',
+};
+router.get('/payment-methods', (_req, res) => {
+  res.json({ methods: Object.entries(PAYMENT_METHODS).map(([id, label]) => ({ id, label })) });
+});
+
 router.get('/', requireAuth, (req, res) => {
   const orders = store.find('orders', (o) => o.userId === req.user.id);
   res.json({ orders });
@@ -15,6 +26,11 @@ router.get('/', requireAuth, (req, res) => {
 router.post('/', requireAuth, asyncHandler(async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   if (!items.length) throw new ApiError(400, 'items est requis.');
+
+  const paymentMethod = req.body.paymentMethod || 'cod';
+  if (!PAYMENT_METHODS[paymentMethod]) {
+    throw new ApiError(400, `Moyen de paiement invalide (${Object.keys(PAYMENT_METHODS).join(', ')}).`);
+  }
 
   const resolved = items.map((i) => {
     const p = store.getById('products', i.productId);
@@ -29,7 +45,12 @@ router.post('/', requireAuth, asyncHandler(async (req, res) => {
   const risk = fraud.checkOrder({ userId: req.user.id, total });
   const status = risk.level === 'rouge' ? 'verification-securite' : 'en-cours';
 
-  const order = store.insert('orders', { userId: req.user.id, items: resolved, total, status, risk });
+  const order = store.insert('orders', {
+    userId: req.user.id, items: resolved, total, status, risk,
+    paymentMethod, paymentLabel: PAYMENT_METHODS[paymentMethod],
+    // Le paiement mobile est confirmé à la validation ; COD payé à la réception.
+    paymentStatus: paymentMethod === 'cod' ? 'a-la-livraison' : 'en-attente',
+  });
 
   for (const i of resolved) {
     const p = store.getById('products', i.productId);

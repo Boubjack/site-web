@@ -11,6 +11,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" />
   <link rel="stylesheet" href="/css/emarket.css" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <script>try{var t=localStorage.getItem("emarket_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"WebSite","name":"E-Market","url":"/","potentialAction":{"@type":"SearchAction","target":"/?q={search_term_string}","query-input":"required name=search_term_string"}}
+  </script>
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Organization","name":"E-Market","description":"La marketplace intelligente d'Afrique de l'Ouest, propulsée par E-Market AI.","areaServed":"ML"}
+  </script>
 </head>
 <body>
   <nav class="nav">
@@ -146,8 +154,10 @@
       const btn = document.getElementById('search-btn');
       btn.disabled = true; btn.textContent = '✨ Analyse…';
       try {
-        const { intent, results } = await EM.api('/api/ai/search', { method: 'POST', body: { query: q } });
+        const { intent, results, correction, semantic } = await EM.api('/api/ai/search', { method: 'POST', body: { query: q } });
         const parts = [];
+        if (correction) parts.push(`orthographe corrigée → « ${correction} »`);
+        if (semantic) parts.push('recherche sémantique');
         if (intent.category) parts.push(`catégorie : ${intent.category}`);
         if (intent.maxPrice) parts.push(`budget max : ${EM.fcfa(intent.maxPrice)}`);
         if (intent.color) parts.push(`couleur : ${intent.color}`);
@@ -163,7 +173,45 @@
       btn.disabled = false; btn.textContent = '✨ Recherche IA';
     }
     document.getElementById('search-btn').addEventListener('click', doSearch);
-    document.getElementById('search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+
+    // ---------- Autocomplétion (suggestions instantanées) ----------
+    const searchInput = document.getElementById('search-input');
+    const searchWrap = searchInput.closest('.ai-search');
+    const box = document.createElement('div');
+    box.className = 'suggest-box';
+    searchWrap.appendChild(box);
+    let sugItems = []; let sugActive = -1; let sugTimer = null;
+
+    function closeSuggest() { box.classList.remove('open'); sugActive = -1; }
+    function renderSuggest(items) {
+      sugItems = items;
+      if (!items.length) return closeSuggest();
+      box.innerHTML = items.map((s, i) => `<div class="suggest-item${i === sugActive ? ' active' : ''}" data-i="${i}">
+        <span>${EM.esc(s.label)}</span><span class="s-type">${EM.esc(s.type)}</span></div>`).join('');
+      box.classList.add('open');
+      box.querySelectorAll('.suggest-item').forEach((el) => el.addEventListener('mousedown', (e) => {
+        e.preventDefault(); searchInput.value = items[+el.dataset.i].label; closeSuggest(); doSearch();
+      }));
+    }
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim();
+      clearTimeout(sugTimer);
+      if (q.length < 2) return closeSuggest();
+      sugTimer = setTimeout(async () => {
+        try { const { suggestions } = await EM.api(`/api/ai/search/suggest?q=${encodeURIComponent(q)}`); renderSuggest(suggestions); }
+        catch { closeSuggest(); }
+      }, 120);
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      if (box.classList.contains('open') && sugItems.length) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); sugActive = (sugActive + 1) % sugItems.length; return renderSuggest(sugItems); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); sugActive = (sugActive - 1 + sugItems.length) % sugItems.length; return renderSuggest(sugItems); }
+        if (e.key === 'Enter' && sugActive >= 0) { searchInput.value = sugItems[sugActive].label; closeSuggest(); return doSearch(); }
+        if (e.key === 'Escape') return closeSuggest();
+      }
+      if (e.key === 'Enter') doSearch();
+    });
+    document.addEventListener('click', (e) => { if (!searchWrap.contains(e.target)) closeSuggest(); });
 
     // ---------- Grilles ----------
     function renderGrid(id, items) {
@@ -283,7 +331,16 @@
         ${product.colors.length ? `<p style="margin-top:10px;font-size:0.85rem"><b>Couleurs :</b> ${product.colors.map(EM.esc).join(', ')}</p>` : ''}
         ${product.sizes.length ? `<p style="font-size:0.85rem"><b>Tailles :</b> ${product.sizes.map(EM.esc).join(', ')}</p>` : ''}
         ${product.specs ? `<p style="font-size:0.85rem"><b>Specs :</b> ${Object.entries(product.specs).map(([k, v]) => `${EM.esc(k)}: ${EM.esc(v)}`).join(' · ')}</p>` : ''}
-        <div style="display:flex;gap:10px;margin:18px 0">
+        <div class="field" style="margin:16px 0 10px">
+          <label>Moyen de paiement</label>
+          <select id="pay-method">
+            <option value="orange-money">🟠 Orange Money</option>
+            <option value="moov-money">🔵 Moov Money</option>
+            <option value="wave">🌊 Wave</option>
+            <option value="cod" selected>💵 Paiement à la livraison</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin:0 0 18px">
           <button class="btn btn-bleu" id="buy-btn" style="flex:1">🛒 Acheter maintenant</button>
           <button class="btn btn-ghost" id="fav-btn">🤍</button>
         </div>
@@ -314,11 +371,12 @@
           return EM.toast('Connectez-vous pour commander.');
         }
         try {
-          const { order, risk } = await EM.api('/api/orders', { method: 'POST', body: { items: [{ productId: id, qty: 1 }] } });
+          const paymentMethod = document.getElementById('pay-method').value;
+          const { order, risk } = await EM.api('/api/orders', { method: 'POST', body: { items: [{ productId: id, qty: 1 }], paymentMethod } });
           document.getElementById('product-overlay').classList.remove('open');
           EM.toast(risk.level === 'rouge'
             ? '⚠️ Commande en vérification de sécurité — notre équipe vous contactera.'
-            : `✅ Commande ${order.id.slice(0, 8)} confirmée — ${EM.fcfa(order.total)}`);
+            : `✅ Commande ${order.id.slice(0, 8)} confirmée — ${EM.fcfa(order.total)} · ${order.paymentLabel}`, 'success');
         } catch (err) { EM.toast(err.message); }
       });
       document.getElementById('product-overlay').classList.add('open');
@@ -335,6 +393,14 @@
     loadStories();
     loadRecos();
     loadCatalog();
+
+    // Liens profonds (SEO / partage) : /?p=<id> ouvre la fiche, /?q=<texte> lance la recherche.
+    const params = new URLSearchParams(location.search);
+    if (params.get('p')) openProduct(params.get('p')).catch(() => {});
+    if (params.get('q')) {
+      document.getElementById('search-input').value = params.get('q');
+      doSearch();
+    }
 
     // Assistant CLIENT (E-Market Shopping Assistant) — widget flottant.
     EMAssistant.mountFloating('shopping');

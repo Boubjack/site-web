@@ -18,10 +18,12 @@ const orchestrator = require('./orchestrator');
 const studioJobs = require('./studio/jobs');
 const brandkit = require('./studio/brandkit');
 const creative = require('./studio/creative');
+const shopTheme = require('./studio/theme');
 const photoAgent = require('./agents/photo');
 const videoAgent = require('./agents/video');
 const recommender = require('./services/recommender');
 const search = require('./services/search');
+const suggest = require('./services/suggest');
 const seller = require('./services/seller');
 const vision = require('./services/vision');
 const marketing = require('./services/marketing');
@@ -165,6 +167,12 @@ router.post('/search', aiLimit, asyncHandler(async (req, res) => {
   res.json(result);
 }));
 
+// Autocomplétion instantanée (léger, non limité par le rate limit IA).
+router.get('/search/suggest', (req, res) => {
+  const q = String(req.query.q || '').slice(0, 100);
+  res.json({ suggestions: suggest.suggest(q, 8) });
+});
+
 /* ------------------------------------------------------------------ */
 /* 4. Assistant vendeur — génération de fiche produit                  */
 /* ------------------------------------------------------------------ */
@@ -284,6 +292,12 @@ router.post('/studio/ad-kit', requireRole('seller', 'admin'), heavyLimit, asyncH
   const sellerId = req.user.role === 'admin' ? (req.body.sellerId || req.user.id) : req.user.id;
   res.json(await creative.adKit(req.body || {}, sellerId));
 }));
+
+// IA Boutique — génère un thème complet selon la catégorie (fusionné au Brand Kit).
+router.get('/studio/theme', requireRole('seller', 'admin'), (req, res) => {
+  const sellerId = req.user.role === 'admin' ? (req.query.sellerId || req.user.id) : req.user.id;
+  res.json({ theme: shopTheme.generate({ category: req.query.category || 'mode', sellerId }), categories: shopTheme.categories() });
+});
 
 // AI Smart Workflow — « Créer ma campagne » (pack complet, identité respectée).
 router.post('/studio/campaign', requireRole('seller', 'admin'), heavyLimit, asyncHandler(async (req, res) => {

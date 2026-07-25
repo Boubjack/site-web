@@ -38,6 +38,25 @@ npm run dev     # rechargement à chaud
 - **Robustesse** : en-têtes de sécurité, limite de charge JSON, arrêt gracieux
   (SIGTERM/SIGINT), le serveur n'ouvre le port que lancé directement.
 
+## Fonctionnalités « grande marketplace » (100 % open source)
+
+Additives, responsives, sans casser le design « Premium Noir » :
+
+- **Recherche intelligente** : tolérance aux fautes (Levenshtein), autocomplétion
+  instantanée, intention en langage naturel, repli sémantique (compatible FAISS).
+- **SEO** : `/sitemap.xml`, `/robots.txt`, pages produit crawlables `/p/:id`
+  (Open Graph + JSON-LD `schema.org/Product`), liens profonds `/?p=` `/?q=`.
+- **PWA** : installable, **mode hors ligne** (service worker + précache app-shell),
+  chargement ultra rapide.
+- **Accessibilité** : mode clair/sombre (opt-in, persisté), contraste élevé,
+  skip-link, navigation clavier.
+- **Paiements locaux** : Orange Money, Moov Money, Wave, paiement à la livraison.
+- **IA Boutique** : thème de boutique complet généré par catégorie (mode, luxe,
+  cosmétique, automobile, électronique, alimentation…), fusionné au Brand Kit.
+
+Cartographie de **chaque** outil open source (intégré / adaptateur / feuille de
+route) : [`docs/OPEN_SOURCE_STACK.md`](docs/OPEN_SOURCE_STACK.md).
+
 ## Architecture multi-agents (orchestrateur + agents spécialisés)
 
 E-Market AI n'est pas une IA monolithique. C'est un **orchestrateur** qui pilote

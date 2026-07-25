@@ -121,5 +121,39 @@
     },
   };
 
+  // Accessibilité : thème clair/sombre (persisté) + lien d'évitement.
+  EM.applyTheme = (t) => {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('emarket_theme', t); } catch { /* ignore */ }
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) { btn.textContent = t === 'light' ? '🌙' : '☀️'; btn.setAttribute('aria-label', t === 'light' ? 'Passer en mode sombre' : 'Passer en mode clair'); }
+  };
+  EM.initA11y = () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    // Lien d'évitement.
+    const target = document.querySelector('main, header');
+    if (target) {
+      if (!target.id) target.id = 'contenu';
+      const skip = document.createElement('a');
+      skip.className = 'skip-link'; skip.href = `#${target.id}`; skip.textContent = 'Aller au contenu';
+      document.body.prepend(skip);
+    }
+    // Bascule de thème.
+    const btn = document.createElement('button');
+    btn.className = 'theme-toggle';
+    btn.addEventListener('click', () => EM.applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'));
+    document.body.appendChild(btn);
+    EM.applyTheme(current);
+  };
+  if (document.readyState !== 'loading') EM.initA11y();
+  else document.addEventListener('DOMContentLoaded', EM.initA11y);
+
   window.EM = EM;
+
+  // PWA : enregistrement du service worker (mode hors ligne + chargement rapide).
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => { /* silencieux */ });
+    });
+  }
 })();

@@ -63,6 +63,17 @@ Additives, responsives, sans casser le design « Premium Noir » :
 Cartographie de **chaque** outil open source (intégré / adaptateur / feuille de
 route) : [`docs/OPEN_SOURCE_STACK.md`](docs/OPEN_SOURCE_STACK.md).
 
+## AI Core Engine (couche centrale)
+
+Tous les moteurs IA (Theme, Layout, Component, Animation, Branding, Commerce,
+Marketing, Pricing, Inventory, Photo, Video, Brand Guardian, Search,
+Recommendation, Analytics, Fraud, SEO, Performance, Accessibility, Translation)
+sont **indépendants** et coordonnés par un **AI Core Engine** via une interface
+uniforme, avec permissions, cache, métriques, événements et logs transverses.
+Extensible : `POST /api/ai/core/:engine/:action`, monitoring `GET /api/ai/core/health`.
+Détails et choix d'architecture (dont « pas de React », build-free) :
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## Architecture multi-agents (orchestrateur + agents spécialisés)
 
 E-Market AI n'est pas une IA monolithique. C'est un **orchestrateur** qui pilote

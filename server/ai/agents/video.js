@@ -20,7 +20,8 @@ const RESOLUTIONS = { '1080p': 'Full HD', '2k': '2K', '4k': '4K UHD', '8k': '8K 
 const RES_ORDER = ['1080p', '2k', '4k', '8k'];
 const FPS = [24, 30, 60];
 
-const CAMERA_MOVES = ['travelling', 'dolly', 'zoom progressif', 'zoom arrière', 'rotation 360°', 'orbit produit', 'vue aérienne', 'plan rapproché', 'macro', 'slow motion', 'accéléré', 'reveal cinématographique'];
+const CAMERA_MOVES = ['travelling', 'dolly', 'zoom progressif', 'zoom arrière', 'rotation 360°', 'orbit produit', 'vue aérienne', 'plan rapproché', 'macro', 'slow motion', 'time-lapse', 'suivi automatique', 'accéléré', 'reveal cinématographique'];
+const EXPORT_FORMATS = ['MP4', 'MOV'];
 const LIGHTING = ['éclairage studio', 'lumière naturelle', 'coucher de soleil', 'lumière premium', 'éclairage dramatique', 'néons', 'lumière douce', 'contre-jour'];
 const PRODUCT_ANIMATIONS = ['rotation du produit', 'produit qui flotte', 'ouverture', 'vue éclatée / démontage', 'mise en avant des détails', 'changement de couleur', 'porté par un mannequin', 'apparition premium'];
 
@@ -47,6 +48,11 @@ const FORMATS = {
   publicite: { ratio: '16:9', defaultDuration: 30, platform: 'Publicité' },
   presentation: { ratio: '16:9', defaultDuration: 45, platform: 'Présentation produit' },
   catalogue: { ratio: '16:9', defaultDuration: 30, platform: 'Catalogue' },
+  reel: { ratio: '9:16', defaultDuration: 20, platform: 'Reel' },
+  promotion: { ratio: '9:16', defaultDuration: 15, platform: 'Promotion' },
+  lifestyle: { ratio: '16:9', defaultDuration: 30, platform: 'Lifestyle' },
+  linkedin: { ratio: '1:1', defaultDuration: 30, platform: 'LinkedIn' },
+  pinterest: { ratio: '2:3', defaultDuration: 20, platform: 'Pinterest' },
 };
 
 // Effets appliqués automatiquement au montage (cinématographiques).
@@ -217,6 +223,7 @@ module.exports = {
   PRODUCT_ANIMATIONS,
   VIDEO_EFFECTS,
   MUSIC_STYLES,
+  EXPORT_FORMATS,
   FPS,
   RESOLUTIONS,
 };

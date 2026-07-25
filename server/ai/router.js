@@ -33,6 +33,7 @@ const analytics = require('./services/analytics');
 const memory = require('./services/memory');
 const i18n = require('./services/i18n');
 const discovery = require('./services/discovery');
+const core = require('./core');
 const { store } = require('../db/store');
 
 const router = express.Router();
@@ -84,6 +85,26 @@ router.get('/status', (_req, res) => {
     languages: i18n.languages(),
   });
 });
+
+/* ================================================================== */
+/* AI CORE ENGINE — couche centrale coordonnant tous les moteurs IA    */
+/* ================================================================== */
+
+/** Liste des moteurs accessibles à l'utilisateur (avec leurs actions). */
+router.get('/core/engines', (req, res) => {
+  res.json({ engines: core.list(req.user || null) });
+});
+
+/** Monitoring : santé, métriques, cache, événements (admin). */
+router.get('/core/health', requireRole('admin'), (_req, res) => {
+  res.json(core.health());
+});
+
+/** Invocation uniforme d'un moteur : POST /core/:engine/:action (permission gérée par le Core). */
+router.post('/core/:engine/:action', aiLimit, asyncHandler(async (req, res) => {
+  const result = await core.run(req.params.engine, req.params.action, req.body || {}, { user: req.user || null });
+  res.json(result);
+}));
 
 /* ================================================================== */
 /* ASSISTANTS IA — trois assistants distincts (registre modulaire)     */

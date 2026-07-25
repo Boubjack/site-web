@@ -80,11 +80,27 @@ const MANNEQUIN_OPTIONS = {
 
 // Générateur d'arrière-plans : décors nommés par univers produit.
 const BACKGROUNDS = {
-  mode: ['studio blanc', 'studio noir', 'rue urbaine', 'appartement moderne', 'café', 'boutique de luxe'],
-  beaute: ['marbre', 'verre', 'eau', 'fleurs'],
-  technologie: ['bureau premium', 'fond futuriste', 'néons'],
-  neutre: ['studio blanc infini', 'aplat de couleur', 'dégradé doux premium'],
+  mode: ['studio blanc', 'studio noir', 'rue urbaine', 'ville', 'appartement moderne', 'café', 'boutique', 'boutique de luxe', 'nature', 'béton'],
+  beaute: ['marbre', 'verre', 'eau', 'fleurs', 'bois', 'fond premium', 'fond minimaliste'],
+  technologie: ['bureau', 'bureau premium', 'fond futuriste', 'néons', 'béton', 'fond minimaliste'],
+  neutre: ['studio blanc', 'studio noir', 'aplat de couleur', 'dégradé doux premium', 'fond luxe', 'fond minimaliste'],
 };
+
+// Bibliothèque complète de décors (sélection libre + « personnalisé »).
+const BACKGROUND_LIBRARY = [
+  'studio blanc', 'studio noir', 'marbre', 'bois', 'béton', 'boutique', 'nature', 'ville',
+  'appartement', 'bureau', 'fond luxe', 'fond premium', 'fond minimaliste', 'fond futuriste', 'personnalisé',
+];
+
+// Smart Retouch : nettoyage + amélioration automatiques (pipeline).
+const SMART_RETOUCH = {
+  remove: ['objets indésirables', 'ombres parasites', 'défauts / imperfections', 'bruit', 'flou'],
+  add: ['éclairage professionnel', 'profondeur (depth)', 'contraste maîtrisé'],
+  preserve: ['forme et proportions du produit', 'couleurs réelles', 'logos', 'motifs', 'textures'],
+};
+
+// Export web optimisé.
+const EXPORT_FORMATS = ['PNG', 'JPG', 'WEBP'];
 
 // Choix automatique de l'univers de décor selon la catégorie/type produit.
 function backgroundUniverseFor(product) {
@@ -107,9 +123,12 @@ const ANGLES = [
   { id: 'profil-gauche', label: 'Profil gauche', note: 'côté gauche' },
   { id: 'profil-droit', label: 'Profil droit', note: 'côté droit' },
   { id: 'vue-45', label: 'Vue 45°', note: 'trois-quarts avant' },
-  { id: 'zoom-details', label: 'Zoom détails', note: 'macro coutures/finitions' },
+  { id: 'vue-dessus', label: 'Vue du dessus', note: 'plongée zénithale' },
+  { id: 'macro', label: 'Macro', note: 'gros plan matière/texture' },
+  { id: 'zoom-details', label: 'Zoom détails', note: 'coutures/finitions' },
   { id: 'vue-portee', label: 'Vue portée', note: 'sur mannequin' },
   { id: 'vue-rapprochee', label: 'Vue rapprochée', note: 'gros plan produit' },
+  { id: '360', label: 'Vue 360°', note: 'rotation complète (séquence multi-vues)' },
 ];
 
 // Garde-fous de cohérence visuelle — passés au moteur de rendu.
@@ -288,6 +307,23 @@ async function run(input, ctx) {
     const product = input.productId ? store.getById('products', input.productId) : { name: input.productName || 'produit', category: input.category };
     return { variants: variants(product || {}, { count: input.count || 5, photoType: input.photoType, resolution: input.resolution }), brandKit: input.brandKit || null };
   }
+  if (action === 'retouch') {
+    return {
+      smartRetouch: SMART_RETOUCH,
+      pipeline: ENHANCE_PIPELINE,
+      note: 'Nettoyage (objets/ombres/défauts/bruit/flou) puis amélioration (éclairage/profondeur/contraste), en préservant le produit.',
+      provider: config.media.bgRemovalProvider,
+    };
+  }
+  if (action === 'export') {
+    return {
+      formats: EXPORT_FORMATS,
+      webOptimized: true,
+      recommendations: ['WEBP pour le web (meilleur ratio qualité/poids)', 'PNG si transparence requise', 'JPG pour photos sans transparence'],
+      pipeline: ['redimensionnement responsive', 'compression intelligente', 'métadonnées nettoyées'],
+      provider: config.media.imageProvider,
+    };
+  }
   if (action === 'multiangle') return { angles: multiAnglePlan(input.angles), source: 'une seule photo suffit' };
   if (action === 'tryon') {
     // Architecture d'essayage virtuel (prête pour un moteur try-on).
@@ -334,5 +370,8 @@ module.exports = {
   RESOLUTIONS,
   MANNEQUIN_OPTIONS,
   BACKGROUNDS,
+  BACKGROUND_LIBRARY,
+  SMART_RETOUCH,
+  EXPORT_FORMATS,
   ANGLES,
 };

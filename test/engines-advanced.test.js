@@ -41,6 +41,41 @@ test('client.productQA : répond avec des sources', async () => {
   assert.ok(r.sources.length);
 });
 
+/* ------------------------- AI Client Engine 2.0 ------------------------- */
+test('client.smartCart : coupons + livraison + économies', async () => {
+  const r = await core.run('client', 'smartCart', { items: [{ productId: 'p-020', qty: 1 }, { productId: 'p-023', qty: 1 }] }, CLIENT);
+  assert.ok(r.totalFcfa > 0);
+  assert.ok(r.savingsFcfa >= 0);
+  assert.ok(r.delivery.estimate);
+});
+
+test('client.trustScore : indice borné + disclaimer', async () => {
+  const r = await core.run('client', 'trustScore', { productId: 'p-001' }, CLIENT);
+  assert.ok(r.score >= 0 && r.score <= 100);
+  assert.match(r.disclaimer, /garantie/);
+});
+
+test('client.loyalty : niveau + points depuis l\'historique', async () => {
+  const r = await core.run('client', 'loyalty', {}, CLIENT);
+  assert.ok(typeof r.points === 'number');
+  assert.ok(r.tier);
+});
+
+test('client.subscriptionAdvisor : recommande un plan existant', async () => {
+  const r = await core.run('client', 'subscriptionAdvisor', {}, CLIENT);
+  assert.ok(r.plans.some((p) => p.id === r.recommended));
+});
+
+test('client.giftFinder : idées sous budget', async () => {
+  const r = await core.run('client', 'giftFinder', { budget: 30000, occasion: 'anniversaire' }, CLIENT);
+  assert.ok(r.ideas.every((i) => i.price <= 30000));
+});
+
+test('client.dashboard : agrège profil/achats/fidélité', async () => {
+  const r = await core.run('client', 'dashboard', {}, CLIENT);
+  assert.ok(r.orders && r.loyalty && Array.isArray(r.recommendations));
+});
+
 /* ------------------------- AI Operator Engine 2.0 ------------------------- */
 test('operator.dashboard : KPIs exécutifs', async () => {
   const d = await core.run('operator', 'dashboard', {}, ADMIN);

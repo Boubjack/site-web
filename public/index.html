@@ -121,6 +121,7 @@
         };
       } else {
         links.innerHTML = `
+          <a href="/me.html">Mon espace</a>
           ${user.role === 'seller' ? '<a href="/seller.html">Espace vendeur</a>' : ''}
           ${user.role === 'admin' ? '<a href="/admin.html">emarket.admin</a>' : ''}
           <span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span>

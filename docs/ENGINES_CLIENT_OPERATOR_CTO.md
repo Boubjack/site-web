@@ -17,10 +17,26 @@ sourcée sur le catalogue réel). Complète l'assistant conversationnel `shoppin
 | `outfit` | Compose une tenue/look complet (produits complémentaires réels) |
 | `productQA` | Répond aux questions produit (matière, dimensions, livraison, garantie, retour, entretien) |
 | `alerts` | Alertes personnalisées (stock faible, rupture, nouveautés suivies) |
+| `profile` | Profil appris (catégories, couleurs, tailles, marques, budget, fréquence) — **consultable/effaçable** |
+| `smartCart` | Optimise le panier : coupons éligibles, livraison, compléments, économies |
+| `giftFinder` | Idées cadeaux (budget, occasion, centres d'intérêt, style) |
+| `reviewSummary` | Résumé des avis : forces, faiblesses, sentiment |
+| `trustScore` | Indice de confiance produit (aide à la décision, pas une garantie) |
+| `delivery` | Suivi de livraison : statut, progression, ETA, timeline |
+| `reorder` | Rachat des produits achetés régulièrement |
+| `calendar` | Calendrier d'achat (événements + suggestions) |
+| `loyalty` | Fidélité : points, niveau, badges, défis, coupons |
+| `subscriptionAdvisor` | Conseille l'abonnement Premium adapté |
+| `priceHistory` | Historique de prix (plus bas/haut) |
+| `discovery` | Découvertes (préférences, tendances, nouveautés) |
+| `dashboard` | Tableau de bord personnel agrégé |
 
+**UI client** : `public/me.html` — « Mon espace » (stats, fidélité, préférences
+apprises + effacement, calendrier, rachats, recommandations, abonnement).
+Confidentialité : mémoire consultable et **effaçable** (`DELETE /api/ai/memory`).
 La recherche par texte/voix/photo/conversation et la personnalisation
 progressive existent déjà (assistant `shopping`, `search`, `recommendation`,
-`personalization`, mémoire, vision).
+`personalization`, mémoire, vision). Group shopping / communauté = feuille de route.
 
 ## AI Operator Engine 2.0 (`operator`, admin)
 

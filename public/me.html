@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Market — Mon espace</title>
+  <meta name="theme-color" content="#08080a" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a90ff'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='800' fill='white' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" />
+  <link rel="stylesheet" href="/css/emarket.css" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <script>try{var t=localStorage.getItem("emarket_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <style>
+    .me-hero { padding: 24px 26px; border-radius: var(--r-lg); background: linear-gradient(150deg, var(--bleu-soft), transparent); border: 1px solid var(--glass-border); margin-bottom: 20px; }
+    .me-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 14px; }
+    .me-stat { background: var(--glass-strong); border: 1px solid var(--glass-border); border-radius: var(--r); padding: 14px 16px; }
+    .me-stat .l { color: var(--text-2); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; }
+    .me-stat .v { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; margin-top: 4px; }
+    .chips span { display: inline-block; background: var(--glass-strong); border: 1px solid var(--glass-border); border-radius: 999px; padding: 4px 12px; font-size: 0.78rem; margin: 3px 4px 0 0; }
+    .badge-lvl { display:inline-flex; align-items:center; gap:6px; background: linear-gradient(135deg, var(--bleu), var(--bleu-ink)); color:#fff; padding:4px 12px; border-radius:999px; font-weight:700; font-size:0.8rem; }
+    .evt { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--glass-border); font-size:0.88rem; }
+    .plan { border:1px solid var(--glass-border); border-radius:var(--r); padding:14px; }
+    .plan.reco { border-color: var(--bleu); box-shadow: 0 0 0 1px var(--bleu-soft); }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="logo" href="/"><span>Market</span></a>
+    <span class="ai-tag">🧑‍💼 Mon conseiller · E-Market AI</span>
+    <div class="links" id="nav-links"></div>
+  </nav>
+
+  <main class="dash">
+    <div id="gate" class="panel glass" style="display:none;text-align:center">
+      <h3>Connectez-vous</h3>
+      <p class="sub">Votre espace personnel (démo : client@emarket.ml / client123) — connectez-vous depuis la <a href="/" style="color:var(--bleu)">page d'accueil</a>.</p>
+    </div>
+
+    <div id="board" style="display:none">
+      <section class="me-hero">
+        <div class="ai-tag" style="margin-bottom:8px">✨ Votre conseiller personnel</div>
+        <h2 id="me-greeting" style="font-family:var(--font-display);font-size:1.4rem">Bonjour</h2>
+        <div class="me-stats" id="me-stats"></div>
+      </section>
+
+      <div class="dash-grid">
+        <section class="panel glass">
+          <h3>🎁 Fidélité</h3>
+          <div id="me-loyalty" style="margin-top:10px"></div>
+        </section>
+
+        <section class="panel glass">
+          <h3>🧠 Mes préférences apprises</h3>
+          <p class="sub">Vous pouvez les effacer à tout moment.</p>
+          <div id="me-prefs" class="chips" style="margin-top:8px"></div>
+          <button class="btn btn-ghost btn-sm" id="me-forget" style="margin-top:14px">🗑️ Effacer mes préférences</button>
+        </section>
+
+        <section class="panel glass">
+          <h3>📅 Calendrier d'achat</h3>
+          <div id="me-calendar" style="margin-top:8px"></div>
+        </section>
+
+        <section class="panel glass">
+          <h3>🔁 À recommander</h3>
+          <div id="me-reorder" style="margin-top:8px"></div>
+        </section>
+
+        <section class="panel glass" style="grid-column: 1 / -1">
+          <h3>✨ Rien que pour vous</h3>
+          <div class="grid" id="me-recos" style="margin-top:14px"></div>
+        </section>
+
+        <section class="panel glass" style="grid-column: 1 / -1">
+          <h3>💎 Abonnement recommandé</h3>
+          <p class="sub" id="me-sub-why"></p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px" id="me-plans"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const user = EM.user();
+    const links = document.getElementById('nav-links');
+    links.innerHTML = user
+      ? `<a href="/">Boutique</a><span style="color:var(--blanc)">👤 ${EM.esc(user.name)}</span><a href="#" id="lo">Déconnexion</a>`
+      : '<a href="/">Boutique</a>';
+    if (user) links.querySelector('#lo').onclick = (e) => { e.preventDefault(); EM.logout(); };
+
+    if (!user) { document.getElementById('gate').style.display = 'block'; }
+    else { document.getElementById('board').style.display = 'block'; init(); }
+
+    async function engine(action, body = {}) {
+      for (let a = 0; a < 3; a += 1) {
+        try { return await EM.api(`/api/ai/core/client/${action}`, { method: 'POST', body }); }
+        catch (err) { if (a === 2 || /Erreur \d/.test(err.message)) throw err; await new Promise((r) => setTimeout(r, 500)); }
+      }
+    }
+    async function safe(fn, l) { try { await fn(); } catch (e) { console.warn(l, e.message); } }
+
+    async function init() {
+      document.getElementById('me-greeting').textContent = `Bonjour ${user.name} 👋`;
+      await safe(loadDashboard, 'dashboard');
+      await safe(loadCalendar, 'calendar');
+      await safe(loadSubscription, 'subscription');
+      document.getElementById('me-forget').addEventListener('click', forget);
+    }
+
+    async function loadDashboard() {
+      const d = await engine('dashboard');
+      document.getElementById('me-stats').innerHTML = [
+        ['Commandes', d.orders.count],
+        ['Total dépensé', EM.fcfa(d.orders.totalSpentFcfa)],
+        ['Économies estimées', EM.fcfa(d.orders.estimatedSavingsFcfa)],
+        ['Points fidélité', d.loyalty.points],
+        ['Wishlist', d.wishlistCount],
+      ].map(([l, v]) => `<div class="me-stat"><div class="l">${l}</div><div class="v">${EM.esc(String(v))}</div></div>`).join('');
+
+      const lo = d.loyalty;
+      document.getElementById('me-loyalty').innerHTML =
+        `<span class="badge-lvl">🏅 ${EM.esc(lo.tier)}</span> <b style="margin-left:8px">${lo.points} points</b>
+         ${lo.nextTier ? `<div class="sub" style="margin-top:8px">Encore ${lo.nextTier.pointsNeeded} pts pour ${EM.esc(lo.nextTier.name)}.</div>` : ''}
+         <div style="margin-top:10px">${lo.badges.map((b) => `<span class="chips"><span>🎖️ ${EM.esc(b)}</span></span>`).join('')}</div>
+         ${lo.coupons.length ? `<div style="margin-top:8px;color:var(--vert)">🎟️ ${lo.coupons.map((c) => EM.esc(c.label)).join(', ')}</div>` : ''}
+         <div style="margin-top:10px"><b>Défis</b><ul style="margin:6px 0 0 18px;color:var(--gris);font-size:0.84rem">${lo.challenges.map((c) => `<li>${EM.esc(c.title)} — <span style="color:var(--bleu-2)">${EM.esc(c.reward)}</span></li>`).join('')}</ul></div>`;
+
+      const p = d.profile;
+      const chips = [...(p.categories || []).map((c) => ['📂', c]), ...(p.colors || []).map((c) => ['🎨', c]), ...(p.sizes || []).map((c) => ['📏', c])];
+      document.getElementById('me-prefs').innerHTML = chips.length
+        ? chips.map(([e, v]) => `<span>${e} ${EM.esc(v)}</span>`).join('') + (p.averageBudgetFcfa ? `<span>💰 ~${EM.fcfa(p.averageBudgetFcfa)}</span>` : '')
+        : '<span style="color:var(--gris)">Vos préférences s\'apprendront au fil de vos visites.</span>';
+
+      document.getElementById('me-reorder').innerHTML = d.reorder.length
+        ? d.reorder.map((r) => `<div class="evt"><span>${EM.esc(r.name)}</span><b>${EM.fcfa(r.price)}</b></div>`).join('')
+        : '<p style="color:var(--gris)">Aucun rachat détecté pour l\'instant.</p>';
+
+      const grid = document.getElementById('me-recos');
+      grid.innerHTML = d.recommendations.map(EM.productCardHtml).join('');
+      grid.querySelectorAll('.card').forEach((c) => c.addEventListener('click', () => { location.href = '/?p=' + encodeURIComponent(c.dataset.id); }));
+    }
+
+    async function loadCalendar() {
+      const c = await engine('calendar');
+      document.getElementById('me-calendar').innerHTML =
+        c.upcoming.map((e) => `<div class="evt"><span>${EM.esc(e.name)}</span><span style="color:var(--gris)">dans ${e.inDays} j</span></div>`).join('') +
+        `<div class="sub" style="margin-top:8px">${EM.esc(c.note)}</div>`;
+    }
+
+    async function loadSubscription() {
+      const s = await engine('subscriptionAdvisor');
+      document.getElementById('me-sub-why').textContent = s.rationale;
+      document.getElementById('me-plans').innerHTML = s.plans.map((p) => `
+        <div class="plan ${p.id === s.recommended ? 'reco' : ''}">
+          ${p.id === s.recommended ? '<div class="ai-tag" style="margin-bottom:8px">Recommandé</div>' : ''}
+          <div style="font-weight:800;font-family:var(--font-display)">${EM.esc(p.name)}</div>
+          <div style="color:var(--bleu-2);font-weight:700;margin:4px 0 8px">${p.priceFcfa ? EM.fcfa(p.priceFcfa) + '/mois' : 'Gratuit'}</div>
+          <ul style="margin:0 0 0 16px;color:var(--gris);font-size:0.82rem">${p.perks.map((x) => `<li>${EM.esc(x)}</li>`).join('')}</ul>
+        </div>`).join('');
+    }
+
+    async function forget() {
+      try {
+        await EM.api('/api/ai/memory?namespace=shopping', { method: 'DELETE' });
+        EM.toast('🗑️ Préférences effacées.', 'success');
+        loadDashboard();
+      } catch (err) { EM.toast(err.message); }
+    }
+  </script>
+</body>
+</html>

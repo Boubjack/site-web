@@ -231,8 +231,8 @@ const ENGINES = [
 
   /* ---------------- CLIENT (Personal Shopping Assistant) ---------------- */
   {
-    id: 'client', name: 'AI Client Engine', category: 'client', allowedRoles: null,
-    description: 'Assistant d\'achat : comparateur, panier par budget, guide des tailles, tenues, Q/R produit, alertes.',
+    id: 'client', name: 'AI Client Engine 2.0', category: 'client', allowedRoles: null,
+    description: 'Personal Shopping Assistant : profil appris, smart cart, cadeaux, avis, confiance, livraison, fidélité, découverte, dashboard.',
     actions: {
       compare: { description: 'Compare plusieurs produits (avantages/prix/avis/qualité-prix).', handler: (i) => clientEngine.compare(i) },
       budget: { description: 'Panier optimisé pour un budget.', handler: (i) => clientEngine.budgetBasket(i) },
@@ -240,6 +240,19 @@ const ENGINES = [
       outfit: { description: 'Crée une tenue/look complet.', handler: (i) => clientEngine.outfit(i) },
       productQA: { description: 'Répond aux questions produit (matière, livraison, garantie…).', handler: (i) => clientEngine.productQA(i) },
       alerts: { description: 'Alertes personnalisées (stock, nouveautés).', handler: (i, ctx) => clientEngine.alerts({ userId: ctx.user ? ctx.user.id : null }) },
+      profile: { description: 'Profil appris (préférences, tailles, marques) — consultable/effaçable.', handler: (i, ctx) => clientEngine.profile({ userId: ctx.user ? ctx.user.id : null }) },
+      smartCart: { description: 'Optimise le panier (coupons, livraison, compléments, économies).', handler: (i, ctx) => clientEngine.smartCart({ items: i.items, userId: ctx.user ? ctx.user.id : null }) },
+      giftFinder: { description: 'Idées cadeaux (budget, occasion, centres d\'intérêt).', handler: (i) => clientEngine.giftFinder(i) },
+      reviewSummary: { description: 'Résumé des avis (forces/faiblesses/sentiment).', handler: (i) => clientEngine.reviewSummary(i) },
+      trustScore: { description: 'Indice de confiance produit (aide à la décision).', handler: (i) => clientEngine.trustScore(i) },
+      delivery: { description: 'Suivi de livraison (statut, progression, ETA).', handler: (i, ctx) => clientEngine.delivery({ orderId: i.orderId, userId: ctx.user ? ctx.user.id : null }) },
+      reorder: { description: 'Produits à recommander (achats réguliers).', handler: (i, ctx) => clientEngine.reorder({ userId: ctx.user ? ctx.user.id : null }) },
+      calendar: { description: 'Calendrier d\'achat (événements + suggestions).', handler: () => clientEngine.calendar() },
+      loyalty: { description: 'Fidélité : points, niveau, badges, défis.', handler: (i, ctx) => clientEngine.loyalty({ userId: ctx.user ? ctx.user.id : null }) },
+      subscriptionAdvisor: { description: 'Conseille l\'abonnement Premium adapté.', handler: (i, ctx) => clientEngine.subscriptionAdvisor({ userId: ctx.user ? ctx.user.id : null }) },
+      priceHistory: { description: 'Historique de prix + plus bas/haut.', handler: (i) => clientEngine.priceHistory(i) },
+      discovery: { description: 'Découvertes (préférences, tendances, nouveautés).', handler: (i, ctx) => clientEngine.discovery({ userId: ctx.user ? ctx.user.id : null }) },
+      dashboard: { description: 'Tableau de bord personnel (profil, achats, fidélité, suggestions).', handler: (i, ctx) => clientEngine.dashboard({ userId: ctx.user ? ctx.user.id : null }) },
     },
   },
 

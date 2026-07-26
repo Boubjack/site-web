@@ -1,0 +1,4 @@
+# Keep this folder in git, ignore its generated contents.
+*
+!.gitignore
+!README.md

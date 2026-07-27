@@ -7,10 +7,10 @@ compiling, tested, and documented — never breaking earlier functionality.
 | Version    | Theme                     | Key deliverables                                                                 |
 | ---------- | ------------------------- | -------------------------------------------------------------------------------- |
 | **0.0.1**  | **Foundation** *(done)*   | Project structure, architecture, engine subsystems (config/log/events/resources/save/audio/input/camera/menu/loading), CMake build, tests. **No gameplay.** |
+| **0.1.0**  | **Football core engine** *(done)* | Generic PhysicsWorld; pitch, ball, players, teams, formations; MatchEngine (phases/clock/score/possession/stats); rules (restarts/offside/discipline); officials; camera modes; match save; MatchSim. **No AI/rendering.** |
 | 0.0.2      | Windowing & rendering     | Window + real-time loop, a graphics backend behind an `IRenderer` interface, debug draw. |
 | 0.0.3      | Real device backends      | SDL2/OpenAL audio + keyboard/gamepad input behind existing interfaces; asset pipeline v1. |
-| 0.1.0      | The ball                  | Independent ball physics: mass, spin, bounce, friction, deflection. Pitch + collision. |
-| 0.2.0      | Players (movement)        | Player entities, animation states, locomotion, ball contact (no AI yet).         |
+| 0.2.0      | Players (movement)        | Player locomotion driving the physics bodies, animation states, ball contact (no AI yet). |
 | 0.3.0      | Player AI                 | Per-player vision, decision-making, positioning, marking, off-ball runs.         |
 | 0.4.0      | Goalkeeper & coach AI     | Dedicated goalkeeper AI; coach/tactics AI shaping team behaviour.                 |
 | 0.5.0      | Match rules & referee     | Referee: fouls, cards, offside, advantage, added time, penalties.                |

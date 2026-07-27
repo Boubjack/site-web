@@ -17,6 +17,7 @@ site-web/
 │   │   ├── Logging/         Logger, levels, sinks (L1)
 │   │   ├── Config/          INI parser + ConfigManager (L1)
 │   │   ├── Events/          Type-indexed EventBus (L1)
+│   │   ├── Physics/         Generic PhysicsWorld: rigid bodies + collisions (L2)
 │   │   ├── Resources/       Ref-counted ResourceManager + loaders (L2)
 │   │   ├── Save/            SaveData, Serializer, atomic SaveManager (L2)
 │   │   ├── Camera/          Camera math + smoothing controller (L2)
@@ -24,7 +25,11 @@ site-web/
 │   │   ├── Loading/         Loading queue + flow state machine (L2)
 │   │   ├── Audio/           IAudioBackend + AudioSystem + Null backend (L3)
 │   │   └── Input/           IInputBackend + InputSystem + Null backend (L3)
-│   └── Sandbox/             Headless boot executable (smoke test / example)
+│   ├── Game/                InfinityFootballGame library (inf::football)
+│   │   └── Football/        Terrain, Ball, Player, Team, Match, Rules,
+│   │                        Officials, Camera, Save (Mission 2, no gameplay AI)
+│   ├── Sandbox/             Headless engine boot executable (smoke test)
+│   └── MatchSim/            Headless full-match runner (Mission 2)
 │
 ├── Tests/                   CTest unit tests + tiny header-only framework
 │   ├── Framework/           TestFramework.hpp

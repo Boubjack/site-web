@@ -11,6 +11,7 @@ add_library(InfinityFootballEngine STATIC
     Config/ConfigFile.cpp
     Config/ConfigManager.cpp
     Events/EventBus.cpp
+    Physics/PhysicsWorld.cpp
     Resources/ResourceManager.cpp
     Save/SaveData.cpp
     Save/Serializer.cpp

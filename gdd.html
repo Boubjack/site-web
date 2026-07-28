@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Design Document — Infinity Football</title>
+  <meta name="description" content="Le Game Design Document intégral d'Infinity Football : tous les tomes, sans résumé ni coupe.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📘</text></svg>">
+</head>
+<body>
+  <div id="root">
+    <div class="container" style="padding-top:4rem; text-align:center;">
+      <p class="muted">Chargement du document…</p>
+    </div>
+  </div>
+  <script type="module">
+    import { renderGddPage } from './js/ui/gdd-page.js';
+    renderGddPage(document.getElementById('root'));
+  </script>
+</body>
+</html>

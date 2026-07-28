@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype jouable — Infinity Football</title>
+  <meta name="description" content="Prototype jouable d'Infinity Football : carrière, monde ouvert, économie, médias, cérémonies et sauvegardes.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+</head>
+<body>
+  <div id="root">
+    <div class="container" style="padding-top: 4rem; text-align: center;">
+      <p class="muted">Chargement du moteur…</p>
+      <noscript>
+        <div class="notice warn" style="text-align:left; max-width: 600px; margin: 2rem auto;">
+          <strong>JavaScript est requis.</strong>
+          Le prototype est une simulation exécutée intégralement dans votre navigateur.
+          Le <a href="gdd.html">Game Design Document</a> reste consultable sans JavaScript.
+        </div>
+      </noscript>
+    </div>
+  </div>
+
+  <script type="module">
+    import { boot } from './js/ui/app.js';
+
+    try {
+      boot(document.getElementById('root'));
+    } catch (error) {
+      console.error(error);
+      document.getElementById('root').innerHTML =
+        '<div class="container" style="padding-top:4rem"><div class="notice warn">' +
+        '<strong>Le moteur n\'a pas pu démarrer.</strong> ' +
+        'Servez le dossier via HTTP (les modules ES ne fonctionnent pas en <code>file://</code>) : ' +
+        '<code>python3 -m http.server 8000</code>.</div></div>';
+    }
+  </script>
+</body>
+</html>

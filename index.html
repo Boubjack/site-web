@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Infinity Football — Game Design Document & prototype</title>
+  <meta name="description" content="Le Game Design Document intégral d'Infinity Football et un prototype jouable de simulation de carrière : économie, monde ouvert, IA, médias et cérémonies.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+</head>
+<body>
+  <div class="shell">
+    <header class="site-header">
+      <div class="container-wide">
+        <a class="brand" href="index.html"><span class="brand-mark">⚽</span> Infinity Football</a>
+        <nav class="site-nav" aria-label="Navigation principale">
+          <a href="index.html" aria-current="page">Accueil</a>
+          <a href="sim.html">Prototype jouable</a>
+          <a href="gdd.html">Game Design Document</a>
+          <a href="traceability.html">Traçabilité</a>
+          <a href="tests.html">Tests</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <h1>Infinity Football</h1>
+        <p class="tagline">
+          Un « Football Life Simulator » où le terrain n'est qu'une partie de l'expérience :
+          carrière, monde ouvert, patrimoine, médias, célébrité et héritage forment un seul univers cohérent.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary btn-lg" href="sim.html">Lancer le prototype</a>
+          <a class="btn btn-lg" href="gdd.html">Lire le Game Design Document</a>
+        </div>
+      </section>
+
+      <section class="notice" style="margin-bottom: 2rem;">
+        <strong>Ce que contient ce dépôt.</strong>
+        Deux choses distinctes, et il est important de ne pas les confondre.
+        D'une part le <a href="gdd.html">Game Design Document complet</a> — l'intégralité des tomes transmis,
+        sans résumé ni coupe. D'autre part un <a href="sim.html">prototype réellement jouable</a> qui implémente
+        la couche simulation du projet : économie, carrière, monde vivant, IA de match, médias, cérémonies et sauvegardes.
+        Le rendu 3D, les animations, l'audio spatial et le multijoueur temps réel relèvent d'une production moteur
+        et ne sont pas dans ce dépôt : la <a href="traceability.html">matrice de traçabilité</a> dit précisément,
+        chapitre par chapitre, ce qui tourne et ce qui n'y est pas.
+      </section>
+
+      <section style="margin-bottom: 3rem;">
+        <h2>Ce qui tourne réellement</h2>
+        <div class="grid grid-3">
+          <div class="card card-hover feature-card">
+            <span class="icon">⚽</span>
+            <h4>Moteur de match</h4>
+            <p>Simulation minute par minute. Le contrôle du ballon dépend de la technique, de la vitesse, de la pression
+              adverse, de la météo, de la pelouse et de la fatigue. Six arbitres aux personnalités distinctes.
+              Les adversaires apprennent de saison en saison.</p>
+          </div>
+          <div class="card card-hover feature-card">
+            <span class="icon">🌍</span>
+            <h4>Monde ouvert vivant</h4>
+            <p>20 pays, 20 villes, plus de 200 lieux visitables. Les PNJ changent d'emploi, déménagent, vieillissent.
+              Des commerces ouvrent et ferment. Le monde évolue même quand vous ne jouez pas.</p>
+          </div>
+          <div class="card card-hover feature-card">
+            <span class="icon">💰</span>
+            <h4>Économie et patrimoine</h4>
+            <p>Quatre comptes, journal comptable exhaustif, investissements à risque réel — un placement peut faire
+              faillite. Immobilier, personnel, collections, fondations et succession.</p>
+          </div>
+          <div class="card card-hover feature-card">
+            <span class="icon">🤖</span>
+            <h4>IA à mémoire</h4>
+            <p>Les commentateurs citent vos anciens clubs, vos records et votre musée. Les journalistes vous
+              renvoient vos déclarations passées. Le monde se souvient.</p>
+          </div>
+          <div class="card card-hover feature-card">
+            <span class="icon">🏆</span>
+            <h4>Boubjack Awards</h4>
+            <p>Les 17 catégories, le tapis rouge, les 10 temps de la cérémonie, les discours des légendes,
+              le suspense de l'enveloppe. Une ville hôte différente chaque année.</p>
+          </div>
+          <div class="card card-hover feature-card">
+            <span class="icon">📱</span>
+            <h4>Smartphone complet</h4>
+            <p>21 applications, IA secrétaire qui répond à vos questions sur vos vraies données,
+              réseaux sociaux à commentaires générés, Snapstreak, commandes et livraisons physiques.</p>
+          </div>
+        </div>
+      </section>
+
+      <section style="margin-bottom: 3rem;">
+        <h2>Architecture</h2>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Principes</div>
+            <ul class="muted small">
+              <li><strong>Modulaire</strong> — dix systèmes indépendants qui ne communiquent que par un bus d'événements. Aucun système n'importe un autre système.</li>
+              <li><strong>Déterministe</strong> — une graine reproduit exactement le même monde. Indispensable pour rejouer un bug.</li>
+              <li><strong>Extensible</strong> — ajouter une ville, un club ou un véhicule est une simple donnée, sans modification de code.</li>
+              <li><strong>Compatible</strong> — les sauvegardes anciennes sont migrées, jamais cassées.</li>
+              <li><strong>Sans dépendance</strong> — modules ES natifs, aucun framework, aucune étape de compilation.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-title">Structure du code</div>
+            <pre class="mono xs muted" style="overflow-x:auto; margin:0;">js/
+├── core/       horloge, RNG, état, sauvegarde, bus
+├── data/       monde, GDD, matrice de traçabilité
+├── systems/    météo, économie, match, calendrier,
+│               carrière, réputation, médias,
+│               récompenses, monde, téléphone
+├── ui/         coque, écrans, cérémonie, DOM
+└── game.js     orchestrateur
+
+tests/run.js    74 tests, navigateur et Node</pre>
+          </div>
+        </div>
+      </section>
+
+      <section style="margin-bottom: 3rem;">
+        <h2>Démarrer</h2>
+        <div class="card">
+          <p class="muted">Le projet n'a aucune dépendance. Un serveur statique suffit — les modules ES exigent
+            le protocole HTTP, ouvrir le fichier directement ne fonctionnera pas.</p>
+          <pre class="mono small" style="background: var(--bg-panel); padding: 1rem; border-radius: 10px; overflow-x: auto;"># Servir le site
+python3 -m http.server 8000
+# puis ouvrir http://localhost:8000
+
+# Lancer la suite de tests
+node tests/run.js</pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p class="mb-0">
+          Infinity Football — Game Design Document et prototype de simulation.
+          <span class="dim">Univers, clubs, marques, arbitres et personnages entièrement fictifs.</span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

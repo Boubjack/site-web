@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tests — Infinity Football</title>
+  <meta name="description" content="Suite de tests du moteur d'Infinity Football, exécutable dans le navigateur.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+</head>
+<body>
+  <div id="root">
+    <div class="container" style="padding-top:4rem; text-align:center;">
+      <p class="muted">Exécution de la suite de tests…</p>
+    </div>
+  </div>
+  <script type="module">
+    import { renderTestPage } from './js/ui/test-page.js';
+    renderTestPage(document.getElementById('root'));
+  </script>
+</body>
+</html>

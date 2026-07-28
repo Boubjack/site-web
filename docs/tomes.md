@@ -22,9 +22,9 @@ page `gdd.html` du site.
 | Tome | Titre | Systèmes | Modules |
 | --- | --- | --- | --- |
 | I | Vision du projet | PNJ persistants | `ai/npc.ts`, `ai/memory.ts`, `ai/personality.ts` |
-| II | Open World | Monde vivant, Voyages & transports | `world/generator.ts`, `world/model.ts`, `world/venues.ts`, `world/navigation.ts`, `world/world-system.ts`, `transport/travel-system.ts` |
-| III | Gameplay football | Saisons & compétitions, Carrière du joueur | `football/match-engine.ts`, `football/tactics.ts`, `football/referee.ts`, `football/match-orchestrator.ts`, `career/season-system.ts` |
-| IV | Mode carrière joueur | Carrière du joueur | `career/career-system.ts`, `career/player.ts` |
+| II | Open World | Monde vivant, Voyages & transports, Football de rue | `world/generator.ts`, `world/model.ts`, `world/venues.ts`, `world/navigation.ts`, `world/world-system.ts`, `transport/travel-system.ts`, `street/street-system.ts` |
+| III | Gameplay football | Saisons & compétitions, Carrière du joueur, Football de rue | `football/match-engine.ts`, `football/tactics.ts`, `football/referee.ts`, `football/match-orchestrator.ts`, `career/season-system.ts`, `street/street-system.ts` |
+| IV | Mode carrière joueur | Carrière du joueur, Football de rue | `career/career-system.ts`, `career/player.ts`, `street/street-system.ts`, `data/street.ts` |
 | V | Mode entraîneur | Mode Entraîneur | `football/manager-system.ts`, `football/tactics.ts` |
 | VI | Mode président | Mode Président | `football/president-system.ts` |
 | VII | Boubjack Awards | Boubjack Awards, Calendrier mondial | `events/boubjack-awards.ts`, `events/world-calendar.ts` |
@@ -73,13 +73,23 @@ hémisphère, trafic horaire, occupation hôtelière, événements de rue, déco
 d'événement. Navigation A* dans la ville, Dijkstra multimodal entre les villes,
 14 profils de déplacement.
 
-### III — Gameplay football
+### III — Gameplay football (et football de rue)
 Deux moteurs. Pour les rencontres du joueur : chaînes de possession action par
 action, duels, progression par zones, tirs, arrêts, cartons, arbitre à
 personnalité et mémoire, six formations et contre-plans tactiques. Pour le reste
 du monde : Poisson pondéré par la force apprise, l'avantage du terrain et
 l'ambiance. Les deux visent les mêmes cibles réelles, contrôlées par
 `balanceReport()`.
+
+Hors des stades, un troisième terrain de jeu : 8 disciplines (cage, futsal,
+panna, freestyle, beach soccer, cinq contre cinq de quartier, tournoi nocturne,
+tekkers), 16 gestes techniques avec leur difficulté et leur valeur de spectacle,
+273 terrains ancrés dans les quartiers réels, des légendes locales nommées
+dotées d'une mémoire et d'une rivalité qui se construit duel après duel, une
+réputation de rue distincte de la réputation professionnelle, des vidéos
+virales qui rapportent des abonnés, des recruteurs anonymes qui reviennent
+plusieurs fois avant de se présenter, 5 marques de rue, et 8 tournois
+récurrents dont 2 qui ne s'annoncent jamais.
 
 ### IV — Mode carrière joueur
 26 attributs pondérés par poste, courbe d'âge, valeur marchande, contrats et

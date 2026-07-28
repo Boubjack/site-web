@@ -35,6 +35,7 @@ import { CommerceSystem, COMMERCE_SERVICE } from './commerce/commerce-system.js'
 import { LifeSystem, LIFE_SERVICE } from './life/life-system.js';
 import { AudioSystem, AUDIO_SERVICE } from './audio/audio-system.js';
 import { PhoneSystem, PHONE_SERVICE } from './phone/phone-system.js';
+import { StreetFootballSystem, STREET_SERVICE } from './street/street-system.js';
 import { MediaSystem, MEDIA_SERVICE } from './media/media-system.js';
 import { AnimationSystem, ANIMATION_SERVICE } from './animation/animation-system.js';
 import { BoubjackAwardsSystem, AWARDS_SERVICE } from './events/boubjack-awards.js';
@@ -168,6 +169,7 @@ export class InfinityFootball {
     this.scheduler.register(new SeasonSystem());
     this.scheduler.register(new CareerSystem());
     this.scheduler.register(new TravelSystem());
+    this.scheduler.register(new StreetFootballSystem());
     this.scheduler.register(new CommerceSystem());
     this.scheduler.register(new LifeSystem());
     this.scheduler.register(new AudioSystem());
@@ -233,6 +235,9 @@ export class InfinityFootball {
   }
   get phone(): PhoneSystem {
     return this.context.require<PhoneSystem>(PHONE_SERVICE);
+  }
+  get street(): StreetFootballSystem {
+    return this.context.require<StreetFootballSystem>(STREET_SERVICE);
   }
   get media(): MediaSystem {
     return this.context.require<MediaSystem>(MEDIA_SERVICE);

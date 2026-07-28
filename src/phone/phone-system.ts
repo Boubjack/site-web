@@ -307,6 +307,30 @@ export class PhoneSystem implements GameSystem {
     });
     // Les titres du reste du monde restent dans l'appli Actualités, alimentée
     // par les alertes de la presse : le joueur ne publie que ses propres titres.
+
+    // Le football de rue vit sur le téléphone avant de vivre dans la presse :
+    // c'est là que la vidéo tourne et que l'invitation arrive (Tome XI, ch. 3).
+    context.events.on('street.viral', (event) => {
+      const gained = Math.round(event.views / 55);
+      this.followers += gained;
+      this.publish('vidéo', `${event.title} — ${event.pitchName}`);
+      this.addMail(
+        'Réseaux sociaux',
+        'Votre vidéo décolle',
+        `« ${event.title} » — ${event.views.toLocaleString('fr-FR')} vues, ${gained.toLocaleString('fr-FR')} nouveaux abonnés.`,
+        false,
+      );
+    });
+
+    context.events.on('street.tournament', (event) => {
+      if (event.stage === 'invitation') {
+        this.addMail('Inconnu', event.tournamentName, event.detail, true);
+        return;
+      }
+      if (event.stage === 'won') {
+        this.publish('trophée', `${event.tournamentName} — ${event.detail}`);
+      }
+    });
   }
 
   // ── État du téléphone ────────────────────────────────────────────────────

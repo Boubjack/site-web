@@ -34,6 +34,7 @@ class LiveWorld {
   readonly game: InfinityFootball;
   private timer: NodeJS.Timeout | null = null;
   private lastMatch: ReturnType<MatchOrchestrator['play']> | null = null;
+  private lastStreet: ReturnType<InfinityFootball['street']['playSession']> = null;
 
   constructor(seed: string) {
     this.game = new InfinityFootball({
@@ -70,6 +71,18 @@ class LiveWorld {
   playMatch(): void {
     const report = this.game.playNextMatch({ cinematics: false });
     if (report) this.lastMatch = report;
+  }
+
+  /** Dispute une session de rue sur un terrain de la ville courante. */
+  playStreet(pitchId?: string, showboat = 0.5): void {
+    const street = this.game.street;
+    const pitches = street.pitchesIn(this.game.travel.cityId);
+    const pitch = pitchId ? street.pitch(pitchId) : pitches[0];
+    if (!pitch) return;
+    const discipline = pitch.disciplines[0];
+    if (!discipline) return;
+    const report = street.playSession(pitch.id, discipline, { showboat });
+    if (report) this.lastStreet = report;
   }
 
   state(): unknown {
@@ -138,6 +151,47 @@ class LiveWorld {
         trends: game.phone.trends,
         battery: game.phone.batteryLevel,
       },
+      street: {
+        cred: game.street.streetCred,
+        standing: game.street.standing,
+        sessions: game.street.sessionsPlayed,
+        pitches: game.street.pitchesIn(city.id).map((pitch) => ({
+          id: pitch.id,
+          name: pitch.name,
+          district: pitch.districtName,
+          disciplines: pitch.disciplines,
+          reputation: pitch.reputation,
+          known: pitch.known,
+          description: game.street.describePitch(pitch.id),
+        })),
+        legends: game.street.legendsIn(city.id).slice(0, 6).map((legend) => ({
+          name: legend.name,
+          nickname: legend.nickname,
+          crew: legend.crewName,
+          age: legend.age,
+          respect: legend.respect,
+          duels: legend.duels,
+        })),
+        clips: game.street.viralClips.slice(0, 5).map((clip) => ({
+          title: clip.title,
+          views: clip.views,
+          pitch: clip.pitchName,
+        })),
+        invitations: game.street.pendingInvitations.map((invitation) => ({
+          id: invitation.id,
+          name: invitation.tournamentName,
+          message: invitation.message,
+          secret: invitation.secret,
+          prize: invitation.prize,
+        })),
+        brands: game.street.availableStreetBrands().map((brand) => brand.name),
+        palmares: game.street.palmares,
+        scouts: game.street.knownScouts.map((scout) => ({
+          club: scout.clubId,
+          impression: scout.impression,
+          offered: scout.offered,
+        })),
+      },
       quality: { ...scores, balance },
       lastMatch: this.lastMatch
         ? {
@@ -161,6 +215,20 @@ class LiveWorld {
               kind: event.kind,
               detail: event.detail,
             })),
+          }
+        : null,
+      lastStreet: this.lastStreet
+        ? {
+            pitch: this.lastStreet.pitchName,
+            discipline: this.lastStreet.disciplineName,
+            opponent: this.lastStreet.opponentName,
+            won: this.lastStreet.won,
+            score: this.lastStreet.scoreLine,
+            summary: this.lastStreet.summary,
+            moves: this.lastStreet.moves,
+            gains: this.lastStreet.attributeGains,
+            clip: this.lastStreet.clip,
+            whisper: this.lastStreet.scoutWhisper,
           }
         : null,
       systems: game.scheduler.all.map((system) => ({
@@ -208,6 +276,12 @@ export function startServer(port = 8080, seed = 'infinity-web'): void {
       const days = Math.max(1, Math.min(90, Number(url.searchParams.get('days') ?? 1)));
       world.game.advanceDays(days);
       sendJson(response, 200, { ok: true, days });
+      return;
+    }
+    if (url.pathname === '/api/street' && request.method === 'POST') {
+      const showboat = Number(url.searchParams.get('showboat') ?? 0.5);
+      world.playStreet(url.searchParams.get('pitch') ?? undefined, showboat);
+      sendJson(response, 200, { ok: true });
       return;
     }
     if (url.pathname === '/api/match' && request.method === 'POST') {

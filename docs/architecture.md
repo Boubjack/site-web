@@ -17,8 +17,8 @@ ni la couche réseau temps réel. Ces éléments appartiennent au moteur hôte
 ne connaît que des données et des événements, jamais un pixel. C'est ce qui rend
 le portage possible sans réécrire la logique de jeu.
 
-Volume actuel : 55 fichiers TypeScript, ~27 400 lignes dans `src/`, ~800 lignes
-de tests, 35 tests, zéro dépendance d'exécution.
+Volume actuel : 57 fichiers TypeScript, ~29 000 lignes dans `src/`, ~1 000 lignes
+de tests, 37 tests, zéro dépendance d'exécution.
 
 ## 2. Principes structurants
 
@@ -123,7 +123,7 @@ comptaient un seul club, ne produisaient aucune rencontre, et une saison entièr
 se déroulait sans match. Les clubs de complément dérivent des villes réelles du
 pays via `hashString`, donc ils sont stables d'une exécution à l'autre.
 
-## 5. Les 21 systèmes
+## 5. Les 22 systèmes
 
 Ordre d'initialisation et tomes couverts :
 
@@ -132,11 +132,12 @@ Ordre d'initialisation et tomes couverts :
 | 10 | Monde vivant | II, XIX, XX, XXIX, XXX, XXXII |
 | 30 | PNJ persistants | I, VIII, XX, XXXII |
 | 40 | Économie & patrimoine | XXIII, XXIV, XXVI |
-| 50 | Saisons & compétitions | XVII, XIX, XXVIII |
-| 60 | Carrière du joueur | IV, XXI, XXVI, XXVIII |
-| 65 | Voyages & transports | XVI, XXX |
-| 70 | Commerce & livraisons | XXII, XXIV, XXX |
-| 75 | Vie personnelle | XI, XVI, XX, XXVI, XXX, XXXI |
+| 50 | Saisons & compétitions | III, XVII, XIX, XXVIII |
+| 60 | Carrière du joueur | III, IV, XXI, XXVI, XXVIII |
+| 65 | Voyages & transports | II, XVI, XXX |
+| 68 | Football de rue | II, III, IV, XX, XXIV, XXX |
+| 70 | Commerce & livraisons | XXIV, XXVI, XXX |
+| 75 | Vie personnelle | XI, XX, XXI, XXVI, XXX, XXXI |
 | 80 | Univers sonore | IX, XIV, XXXI |
 | 90 | Médias & presse | VIII, XXVII, XXVIII |
 | 95 | Animations & détails humains | XIV, XX, XXXI |
@@ -184,7 +185,37 @@ Les deux sont calibrés sur les mêmes cibles réelles : ≈ 2,7 buts par match,
 `QualitySystem.balanceReport()` mesure ces valeurs sur la saison en cours et les
 deux précédentes, et recommande un ajustement quand elles dérivent.
 
-### 6.3 Dialogue
+### 6.3 Football de rue
+
+Le chaînon manquant entre la vie d'un gamin et la carrière professionnelle. Le
+système génère 273 terrains ancrés dans les quartiers réels des villes, chacun
+avec ses disciplines, sa légende locale et ses habitués nommés.
+
+Une session se joue geste par geste : le joueur tente un enchaînement, la foule
+réagit, et le résultat a des conséquences réelles — progression d'attributs
+ciblée par discipline (la cage donne du dribble, pas du jeu de tête), fatigue,
+réputation de rue, et parfois une vidéo qui part.
+
+Trois mécanismes méritent d'être connus avant de toucher au réglage :
+
+- **L'ambition est relative au niveau.** Un geste est choisi en fonction de ce
+  que le joueur maîtrise, plus une marge, jamais dans l'absolu. Une première
+  version choisissait la difficulté depuis le seul curseur de cabotinage : un
+  gamin de seize ans ratait alors 80 % de ses gestes et ne gagnait jamais.
+- **Le sommet, pas la moyenne.** La vidéo virale et la mémoire du recruteur
+  retiennent le meilleur geste de la soirée, pas la moyenne des trente minutes.
+  C'est ce qui donne un sens au cabotinage : jouer sûr construit la réputation
+  et convainc les observateurs, prendre des risques crée le moment qui change
+  une carrière.
+- **Le recruteur revient.** Un observateur qui a repéré le joueur a deux
+  chances sur trois de revenir plutôt qu'un nouveau club. Sans cette fidélité,
+  l'attention se dispersait sur quarante clubs et aucun n'atteignait jamais le
+  seuil de conviction — le mécanisme entier restait inerte.
+
+Deux tournois ne s'annoncent jamais : ils n'apparaissent qu'au-delà de 70 et 85
+de réputation de rue, sous forme d'un message d'un numéro inconnu.
+
+### 6.4 Dialogue
 
 `DialogueEngine` est une grammaire pondérée : 16 registres × 8 tons, avec des
 créneaux obligatoires et optionnels. Le volume combinatoire total est de
@@ -193,14 +224,14 @@ empêche de réentendre une combinaison déjà servie récemment. Le seuil du To
 (500 000) est un test automatisé, pas une intention : `tests/core.test.ts` échoue
 si le volume redescend en dessous.
 
-### 6.4 Mémoire des personnages
+### 6.5 Mémoire des personnages
 
 `MemoryBank` applique une décroissance exponentielle avec **plancher de
 permanence** : un souvenir marqué historique ne s'efface jamais. Un supporter se
 souviendra toujours du but qui a donné le titre, mais oubliera une rencontre
 anodine de novembre.
 
-### 6.5 Navigation
+### 6.6 Navigation
 
 `CityNavGraph` fait de l'A* local sur le graphe des rues, avec 14 profils de
 déplacement (marche, course, vélo, trottinette, voiture, taxi, bus, métro,

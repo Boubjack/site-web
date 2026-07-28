@@ -141,6 +141,32 @@ export type { Relation, RelationKind, Vacation, CharityProject } from './life/li
 export { PhoneSystem, PHONE_SERVICE, APPS } from './phone/phone-system.js';
 export type { AppId, AppDefinition, SocialPost, Streak, AgendaEntry } from './phone/phone-system.js';
 
+// Football de rue
+export { StreetFootballSystem, STREET_SERVICE } from './street/street-system.js';
+export type {
+  StreetPitch,
+  StreetLegend,
+  StreetClip,
+  StreetInvitation,
+  StreetScout,
+  StreetSessionReport,
+} from './street/street-system.js';
+export {
+  DISCIPLINES,
+  STREET_MOVES,
+  STREET_TOURNAMENTS,
+  STREET_BRANDS,
+  getDiscipline,
+  crowdReaction,
+} from './data/street.js';
+export type {
+  StreetDiscipline,
+  DisciplineDef,
+  StreetMove,
+  StreetTournamentDef,
+  StreetBrandDef,
+} from './data/street.js';
+
 // Médias, événements, héritage
 export { MediaSystem, MEDIA_SERVICE } from './media/media-system.js';
 export type { Article, Outlet, PressConference, AnswerTone } from './media/media-system.js';

@@ -192,7 +192,12 @@ export interface PlayerIdentity {
 
 export interface PlayerState {
   readonly identity: PlayerIdentity;
-  readonly profile: CharacterProfile;
+  /**
+   * Le caractère évolue : un joueur qui passe ses soirées sur le bitume gagne
+   * en aisance technique, une longue blessure entame la confiance. L'objet est
+   * remplacé, jamais modifié en place.
+   */
+  profile: CharacterProfile;
   readonly appearance: Appearance;
   attributes: Attributes;
   /** Potentiel maximal atteignable 0..100. */

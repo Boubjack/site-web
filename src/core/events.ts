@@ -473,6 +473,85 @@ export interface RareEncounterEvent extends BaseEvent {
   readonly cityId: string;
 }
 
+/* ── Football de rue (Tomes II, III, IV, XX) ───────────────────────────── */
+
+export interface StreetSessionEvent extends BaseEvent {
+  readonly type: 'street.session';
+  readonly pitchId: string;
+  readonly pitchName: string;
+  readonly cityId: string;
+  readonly discipline: string;
+  /** Score du joueur sur la session, 0..1. */
+  readonly performance: number;
+  /** Spectacle produit, 0..1 : ce qui fait lever les téléphones. */
+  readonly showmanship: number;
+  readonly won: boolean;
+  readonly summary: string;
+}
+
+export interface StreetMoveEvent extends BaseEvent {
+  readonly type: 'street.move';
+  readonly moveId: string;
+  readonly moveName: string;
+  readonly succeeded: boolean;
+  /** Le geste a conclu un duel (petit pont réussi). */
+  readonly finisher: boolean;
+  readonly crowdReaction: string;
+}
+
+export interface StreetReputationEvent extends BaseEvent {
+  readonly type: 'street.reputation';
+  readonly delta: number;
+  readonly value: number;
+  readonly reason: string;
+}
+
+export interface StreetTournamentEvent extends BaseEvent {
+  readonly type: 'street.tournament';
+  readonly tournamentId: string;
+  readonly tournamentName: string;
+  readonly stage: 'invitation' | 'started' | 'round' | 'won' | 'eliminated';
+  readonly cityId: string;
+  readonly detail: string;
+  readonly prize: number;
+}
+
+export interface StreetScoutEvent extends BaseEvent {
+  readonly type: 'street.scout';
+  readonly scoutId: string;
+  readonly clubId: string;
+  /** L'observateur ne s'est pas encore présenté. */
+  readonly anonymous: boolean;
+  readonly impression: number;
+  readonly whisper: string;
+}
+
+export interface StreetViralEvent extends BaseEvent {
+  readonly type: 'street.viral';
+  readonly clipId: string;
+  readonly title: string;
+  readonly views: number;
+  readonly moveName: string;
+  readonly pitchName: string;
+}
+
+export interface StreetRivalEvent extends BaseEvent {
+  readonly type: 'street.rival';
+  readonly rivalId: string;
+  readonly rivalName: string;
+  readonly crewName: string;
+  readonly stage: 'rencontre' | 'défi' | 'victoire' | 'défaite' | 'respect';
+  readonly detail: string;
+}
+
+export interface StreetBrandEvent extends BaseEvent {
+  readonly type: 'street.brand';
+  readonly brandId: string;
+  readonly brandName: string;
+  readonly annualValue: number;
+  readonly obligation: string;
+}
+
 export interface StadiumWorksEvent extends BaseEvent {
   readonly type: 'club.stadiumWorks';
   readonly stadiumId: string;
@@ -566,6 +645,14 @@ export interface GameEventMap {
   'assistant.reminder': SecretaryReminderEvent;
   'multiplayer.event': MultiplayerEvent;
   'system.save': SaveEvent;
+  'street.session': StreetSessionEvent;
+  'street.move': StreetMoveEvent;
+  'street.reputation': StreetReputationEvent;
+  'street.tournament': StreetTournamentEvent;
+  'street.scout': StreetScoutEvent;
+  'street.viral': StreetViralEvent;
+  'street.rival': StreetRivalEvent;
+  'street.brand': StreetBrandEvent;
   'club.stadiumWorks': StadiumWorksEvent;
   'club.board': ClubBoardEvent;
   'club.training': TrainingEvent;

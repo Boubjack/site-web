@@ -15,6 +15,7 @@ import { auditCity } from '../src/world/generator.js';
 import { validateContent } from '../src/devtools/dev-console.js';
 import { routeBetweenCities, routeWithinCity } from '../src/world/navigation.js';
 import { getVenueTemplate } from '../src/world/venues.js';
+import { DISCIPLINES } from '../src/data/street.js';
 
 function newGame(seed = 'test-integration'): InfinityFootball {
   return new InfinityFootball({
@@ -33,7 +34,7 @@ test('démarrage — le monde est généré et tous les systèmes initialisés',
   assert.ok(snapshot.cityCount >= 50, `villes générées : ${snapshot.cityCount}`);
   assert.ok(snapshot.venueCount > 3000, `lieux générés : ${snapshot.venueCount}`);
   assert.ok(snapshot.npcCount > 500, `PNJ persistants : ${snapshot.npcCount}`);
-  assert.equal(game.scheduler.all.length, 21);
+  assert.equal(game.scheduler.all.length, 22);
   for (const system of game.scheduler.all) {
     assert.ok(game.scheduler.isEnabled(system.metadata.id), `système désactivé : ${system.metadata.id}`);
   }
@@ -506,5 +507,125 @@ test('simulation longue — une saison complète reste stable et cohérente', ()
 
   const errors = game.context.rootLogger.entries({ minLevel: 'error' });
   assert.equal(errors.length, 0, `erreurs journalisées : ${errors.map((e) => e.message).join(' | ')}`);
+  game.dispose();
+});
+
+test('football de rue — le monde du bitume existe et forme réellement le joueur', () => {
+  const game = newGame('rue');
+  game.createCareer({
+    name: 'Gamin du Quartier',
+    nationality: 'fr',
+    position: 'MOC',
+    age: 16,
+    potential: 90,
+  });
+
+  const street = game.street;
+
+  // Chaque ville possède ses terrains, ancrés dans des quartiers réels.
+  assert.ok(street.allPitches.length > 100, `terrains générés : ${street.allPitches.length}`);
+  assert.ok(street.allLegends.length > street.allPitches.length, 'chaque terrain a ses habitués');
+  for (const pitch of street.allPitches.slice(0, 20)) {
+    assert.ok(pitch.disciplines.length >= 3, `${pitch.name} doit proposer plusieurs disciplines`);
+    assert.ok(pitch.name.includes(pitch.districtName), 'le terrain porte le nom de son quartier');
+  }
+
+  // Les surnoms sont des identifiants : deux légendes d'une même ville ne
+  // peuvent pas porter le même.
+  const cityId = game.travel.cityId;
+  const nicknames = street.legendsIn(cityId).map((legend) => legend.nickname);
+  assert.equal(new Set(nicknames).size, nicknames.length, 'surnoms dupliqués dans une ville');
+
+  const pitches = street.pitchesIn(cityId);
+  assert.ok(pitches.length >= 2, `terrains dans la ville de départ : ${pitches.length}`);
+  assert.ok((street.describePitch(pitches[0]!.id) ?? '').length > 40, 'un terrain doit se décrire');
+
+  const before = { ...game.career.player.attributes };
+  const report = street.playSession(pitches[0]!.id, pitches[0]!.disciplines[0]!, { showboat: 0.5 });
+  assert.ok(report, 'une session doit pouvoir se jouer');
+  assert.ok(report!.moves.length >= 3, 'une session enchaîne plusieurs gestes');
+  assert.ok(report!.moves.every((move) => move.reaction.length > 0), 'la foule réagit à chaque geste');
+  assert.ok(report!.performance >= 0 && report!.performance <= 1);
+  assert.ok(report!.credGained > 0, 'jouer rapporte de la réputation de rue');
+
+  // La rue forme : les attributs sollicités progressent, les autres non.
+  assert.ok(report!.attributeGains.length > 0, 'une session doit faire progresser le joueur');
+  const trained = new Set(report!.attributeGains.map((gain) => gain.attribute));
+  for (const gain of report!.attributeGains) {
+    const key = gain.attribute as keyof typeof before;
+    assert.ok(game.career.player.attributes[key] > before[key], `${gain.attribute} doit avoir progressé`);
+  }
+  assert.ok(!trained.has('heading'), 'le jeu de tête ne s’apprend pas en cage');
+
+  // Une discipline absente du terrain est refusée.
+  const absent = DISCIPLINES.map((d) => d.id).find((id) => !pitches[0]!.disciplines.includes(id));
+  if (absent) {
+    assert.equal(street.playSession(pitches[0]!.id, absent), null, 'discipline impossible sur ce terrain');
+  }
+
+  game.dispose();
+});
+
+test('football de rue — la réputation ouvre marques, tournois et recruteurs', () => {
+  const game = newGame('rue-carriere');
+  game.createCareer({
+    name: 'Gamin du Quartier',
+    nationality: 'fr',
+    position: 'MOC',
+    age: 16,
+    potential: 90,
+  });
+
+  const street = game.street;
+  const cityId = game.travel.cityId;
+  const pitches = street.pitchesIn(cityId);
+
+  assert.equal(street.streetCred, 0, 'on commence inconnu');
+  assert.equal(street.availableStreetBrands().length, 0, 'aucune marque ne signe un inconnu');
+
+  const invitations: string[] = [];
+  const virals: number[] = [];
+  game.context.events.on('street.tournament', (event) => {
+    if (event.stage === 'invitation') invitations.push(event.tournamentId);
+  });
+  game.context.events.on('street.viral', (event) => virals.push(event.views));
+
+  const followersBefore = game.phone.followerCount;
+
+  for (let index = 0; index < 150; index++) {
+    const pitch = pitches[index % pitches.length]!;
+    street.playSession(pitch.id, pitch.disciplines[index % pitch.disciplines.length]!, { showboat: 0.55 });
+    for (const invitation of street.pendingInvitations) street.acceptInvitation(invitation.id);
+    game.advanceDays(3);
+  }
+
+  assert.ok(street.streetCred > 25, `réputation de rue atteinte : ${street.streetCred}`);
+  assert.ok(street.standing.length > 0);
+  assert.ok(street.availableStreetBrands().length > 0, 'les marques de rue doivent s’intéresser au joueur');
+
+  // Signer une marque paie réellement et ne se fait qu'une fois.
+  const brand = street.availableStreetBrands()[0]!;
+  const liquidityBefore = game.economy.liquidity;
+  assert.ok(street.signStreetBrand(brand.id), 'la signature doit aboutir');
+  assert.ok(game.economy.liquidity > liquidityBefore, 'le contrat doit être encaissé');
+  assert.equal(street.signStreetBrand(brand.id), null, 'on ne signe pas deux fois la même marque');
+
+  assert.ok(invitations.length > 0, 'des tournois doivent inviter le joueur');
+  assert.ok(virals.length > 0, 'au moins une vidéo doit tourner');
+  assert.ok(
+    game.phone.followerCount > followersBefore,
+    'les vidéos virales doivent rapporter des abonnés',
+  );
+
+  // Le monde de la rue survit à une sauvegarde/rechargement.
+  const cred = street.streetCred;
+  const clips = street.viralClips.length;
+  const state = street.serialize();
+  street.deserialize(JSON.parse(JSON.stringify(state)));
+  assert.equal(street.streetCred, cred, 'la réputation doit survivre au rechargement');
+  assert.equal(street.viralClips.length, clips, 'les vidéos doivent survivre au rechargement');
+
+  const errors = game.context.rootLogger.entries({ minLevel: 'error' });
+  assert.equal(errors.length, 0, `erreurs : ${errors.map((entry) => entry.message).join(' | ')}`);
   game.dispose();
 });

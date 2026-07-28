@@ -255,6 +255,30 @@ export class MediaSystem implements GameSystem {
       this.pushAlert(`Titre — ${event.trophyName} pour ${winner}`, 'historic');
     });
 
+    // La presse finit toujours par découvrir la rue — souvent trop tard, et en
+    // reprenant une vidéo que la ville connaît depuis un mois (Tome XXVII).
+    context.events.on('street.viral', (event) => {
+      if (event.views < 60_000) return;
+      this.queueStory(
+        `Le geste de ${this.playerName()} sur un terrain de quartier fait le tour du pays`,
+        event.views > 400_000 ? 'major' : 'notable',
+        ['player:1'],
+        0.7,
+      );
+      this.pushAlert(`Vidéo virale — ${event.moveName} à ${event.pitchName}`, 'notable');
+    });
+
+    context.events.on('street.tournament', (event) => {
+      if (event.stage !== 'won') return;
+      this.queueStory(
+        `${event.tournamentName} : ${this.playerName()} s'impose loin des stades`,
+        'notable',
+        ['player:1'],
+        0.8,
+      );
+      this.pushAlert(`${event.tournamentName} remporté par ${this.playerName()}`, 'major');
+    });
+
     context.events.on('competition.decided', (event) => {
       this.queueStory(
         `${event.competitionName} : ${event.championName} champion`,

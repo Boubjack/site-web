@@ -11,8 +11,8 @@ Document intégral dont il découle.
 
 | Dossier | Contenu |
 | --- | --- |
-| `src/` | Le moteur de simulation complet : 21 systèmes, ~27 400 lignes |
-| `tests/` | 35 tests moteur (`node --test`) + 75 tests du prototype navigateur |
+| `src/` | Le moteur de simulation complet : 22 systèmes, ~29 000 lignes |
+| `tests/` | 37 tests moteur (`node --test`) + 75 tests du prototype navigateur |
 | `web/` | Le tableau de bord du monde vivant, servi par `npm run web` |
 | `docs/` | [Architecture](docs/architecture.md) et [couverture des tomes](docs/tomes.md) |
 | `js/`, `*.html`, `css/` | Le site : GDD intégral, prototype jouable, traçabilité, tests |
@@ -27,7 +27,7 @@ Node 20 ou plus récent.
 
 ```bash
 npm install          # typescript et @types/node uniquement
-npm test             # compile puis exécute les 35 tests
+npm test             # compile puis exécute les 37 tests
 npm run simulate     # démonstration headless : deux saisons, cérémonie, rapports
 npm run web          # tableau de bord sur http://localhost:8080
 ```
@@ -55,6 +55,7 @@ donne accès à la console développeur ainsi qu'aux Boubjack Awards.
 | `/api/advance?days=N` | POST | Avance de N jours (1 à 90) |
 | `/api/match` | POST | Joue la prochaine rencontre du joueur |
 | `/api/console?c=…` | POST | Exécute une commande de la console développeur |
+| `/api/street?showboat=…` | POST | Dispute une session de football de rue |
 | `/api/ceremony` | POST | Déroule une édition des Boubjack Awards |
 
 ## Utiliser le moteur depuis du code
@@ -100,6 +101,10 @@ titres décernés.
   ≈ 25 % de nuls, vérifié en continu par `balanceReport()`.
 - **Dialogue** — 1 689 480 répliques distinctes, anti-répétition à fenêtre
   glissante.
+- **Football de rue** — 273 terrains dans les quartiers, 8 disciplines, 16
+  gestes, légendes locales à mémoire, vidéos virales, recruteurs anonymes,
+  8 tournois dont 2 secrets. La rue fait progresser de vrais attributs et peut
+  ouvrir une porte professionnelle.
 
 Le détail est dans [`docs/architecture.md`](docs/architecture.md).
 

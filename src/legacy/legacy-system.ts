@@ -227,6 +227,18 @@ export class LegacySystem implements GameSystem {
         break;
       // Les palmarès du monde entrent aux archives, jamais dans le musée du
       // joueur : seul ce qu'il a gagné lui-même y est exposé (Tome XXV, ch. 2).
+      // D'où l'on vient fait partie de l'héritage autant que ce qu'on a gagné.
+      case 'street.tournament':
+        if (event.stage === 'won') {
+          this.addTimeline('trophée', event.tournamentName, event.detail);
+          this.addExhibit('trophée', event.tournamentName, 'galerie des trophées',
+            'Remporté sur le bitume, avant les stades');
+          this.addAlbumEntry(`${event.tournamentName} — la nuit du quartier`, ['rue', 'trophée']);
+        }
+        break;
+      case 'street.viral':
+        this.addAlbumEntry(`${event.moveName} à ${event.pitchName}`, ['rue', 'geste', 'vidéo']);
+        break;
       case 'competition.decided':
         this.addArchive(
           'finale',

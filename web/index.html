@@ -185,6 +185,7 @@
     <button data-days="7">+ 1 semaine</button>
     <button data-days="30">+ 1 mois</button>
     <button class="primary" id="btn-match">Jouer le prochain match</button>
+    <button id="btn-street">Aller sur le terrain</button>
     <button id="btn-ceremony">Boubjack Awards</button>
     <input type="text" id="cmd" placeholder="console : aide, monde, perf…" autocomplete="off" spellcheck="false">
     <button id="btn-cmd">Exécuter</button>
@@ -225,6 +226,16 @@
     <section class="card">
       <h2>Smartphone <small id="phone-battery"></small></h2>
       <div id="phone"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>Football de rue <small id="street-standing"></small></h2>
+      <div id="street"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>Dernière session de rue</h2>
+      <div id="street-session"></div>
     </section>
 
     <section class="card w6">
@@ -556,6 +567,84 @@ function renderQuality(state) {
       : '<p class="meta">Équilibrage conforme aux cibles.</p>');
 }
 
+function renderStreet(state) {
+  const s = state.street;
+  $('street-standing').textContent = `${s.cred}/100 · ${s.standing}`;
+  const pitches = s.pitches.length
+    ? s.pitches
+        .map(
+          (p) =>
+            `<li>${esc(p.name)}${p.known ? ' <span class="tag on">connu</span>' : ''}` +
+            `<div class="meta">${esc(p.disciplines.join(', '))}</div></li>`,
+        )
+        .join('')
+    : '<li class="empty">Aucun terrain dans cette ville.</li>';
+  const legends = s.legends.length
+    ? s.legends
+        .map(
+          (l) =>
+            `<li>${esc(l.name)} « ${esc(l.nickname)} » <span class="meta">${l.age} ans, ${esc(l.crew)}</span>` +
+            `<div class="meta">${l.duels} duel(s) · respect ${Math.round(l.respect * 100)}</div></li>`,
+        )
+        .join('')
+    : '<li class="empty">Personne de connu ici.</li>';
+  const clips = s.clips.length
+    ? s.clips.map((c) => `<li>${esc(c.title)}<div class="meta">${nf.format(c.views)} vues · ${esc(c.pitch)}</div></li>`).join('')
+    : '<li class="empty">Aucune vidéo en circulation.</li>';
+  const invitations = s.invitations.length
+    ? s.invitations
+        .map((i) => `<li>${i.secret ? '🔒 ' : ''}${esc(i.name)}<div class="meta">${esc(i.message)}</div></li>`)
+        .join('')
+    : '';
+  const scouts = s.scouts.length
+    ? s.scouts
+        .map((sc) => `<span class="tag${sc.offered ? ' on' : ''}">${esc(sc.club)}${sc.offered ? ' · essai' : ''}</span>`)
+        .join('')
+    : '';
+
+  $('street').innerHTML =
+    `<div class="stats">${stat(s.cred, 'réputation')}${stat(s.sessions, 'sessions')}${stat(s.palmares.length, 'titres')}</div>
+     ${gauge('Réputation de rue', s.cred / 100)}
+     <p class="meta" style="margin:.8rem 0 .2rem">Terrains du quartier</p>
+     <ul class="list">${pitches}</ul>
+     <p class="meta" style="margin:.8rem 0 .2rem">Les habitués</p>
+     <ul class="list">${legends}</ul>
+     <p class="meta" style="margin:.8rem 0 .2rem">Vidéos qui tournent</p>
+     <ul class="list">${clips}</ul>
+     ${invitations ? `<p class="meta" style="margin:.8rem 0 .2rem">Invitations</p><ul class="list">${invitations}</ul>` : ''}
+     ${scouts ? `<p class="meta" style="margin:.8rem 0 .3rem">Recruteurs qui se sont présentés</p><div class="tags">${scouts}</div>` : ''}
+     ${s.brands.length ? `<p class="meta" style="margin:.8rem 0 .3rem">Marques intéressées</p><div class="tags">${s.brands.map((b) => `<span class="tag">${esc(b)}</span>`).join('')}</div>` : ''}`;
+}
+
+function renderStreetSession(state) {
+  const s = state.lastStreet;
+  if (!s) {
+    $('street-session').innerHTML =
+      '<p class="empty">Aucune session jouée. Utilisez « Aller sur le terrain ».</p>';
+    return;
+  }
+  $('street-session').innerHTML =
+    `<p style="margin:0 0 .3rem"><b>${esc(s.discipline)}</b> — ${esc(s.pitch)}</p>
+     ${kv('Adversaire', s.opponent)}
+     ${kv('Résultat', `${s.won ? 'gagné' : 'perdu'} · ${s.score}`)}
+     <p class="meta" style="margin:.8rem 0 .2rem">Geste par geste</p>
+     <ul class="list">${s.moves
+       .map(
+         (m) =>
+           `<li>${m.succeeded ? '✓' : '✗'} ${esc(m.name)}${m.finisher ? ' <span class="tag on">petit pont</span>' : ''}` +
+           `<div class="meta">${esc(m.reaction)}</div></li>`,
+       )
+       .join('')}</ul>
+     ${
+       s.gains.length
+         ? `<p class="meta" style="margin:.8rem 0 .2rem">Ce que la rue t'a appris</p>` +
+           s.gains.map((g) => `<p class="meta">${esc(g.attribute)} +${g.delta}</p>`).join('')
+         : ''
+     }
+     ${s.clip ? `<blockquote>${esc(s.clip.title)}<cite>${nf.format(s.clip.views)} vues</cite></blockquote>` : ''}
+     ${s.whisper ? `<blockquote>${esc(s.whisper)}<cite>dans un coin du terrain</cite></blockquote>` : ''}`;
+}
+
 function renderSystems(state) {
   $('systems-count').textContent = `${state.systems.length} systèmes`;
   $('systems').innerHTML = state.systems
@@ -578,6 +667,8 @@ function render(state) {
   renderVenues(state);
   renderSecretary(state);
   renderQuality(state);
+  renderStreet(state);
+  renderStreetSession(state);
   renderSystems(state);
 }
 
@@ -631,6 +722,14 @@ $('btn-match').addEventListener('click', () => {
   void withBusy(async () => {
     await fetch('/api/match', { method: 'POST' });
     flash('Match joué');
+    await refresh();
+  });
+});
+
+$('btn-street').addEventListener('click', () => {
+  void withBusy(async () => {
+    await fetch('/api/street?showboat=0.6', { method: 'POST' });
+    flash('Session de rue jouée');
     await refresh();
   });
 });

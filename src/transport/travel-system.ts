@@ -148,6 +148,7 @@ export class TravelSystem implements GameSystem {
       const home = [...first.venues.values()].find((v) => v.type === 'apartment');
       this.currentVenueId = home?.id ?? null;
     }
+    this.world.setFocusCity(this.currentCity);
   }
 
   get cityId(): string {
@@ -355,8 +356,10 @@ export class TravelSystem implements GameSystem {
     journey.completed = true;
     this.activeJourneyId = null;
 
-    // Arrivée effective dans la ville de destination.
+    // Arrivée effective dans la ville de destination : elle devient la ville
+    // simulée en détail maximal.
     this.currentCity = journey.toCityId;
+    this.world.setFocusCity(this.currentCity);
     const city = this.world.city(this.currentCity);
     const hotel = [...city.venues.values()].find((v) => v.type === 'hotel');
     this.currentVenueId = hotel?.id ?? null;
@@ -481,6 +484,7 @@ export class TravelSystem implements GameSystem {
   relocateTo(cityId: string, venueId: string | null = null): void {
     this.currentCity = cityId;
     this.currentVenueId = venueId;
+    this.world.setFocusCity(cityId);
   }
 
   /** Distance directe vers une ville, en kilomètres. */

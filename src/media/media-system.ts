@@ -299,6 +299,13 @@ export class MediaSystem implements GameSystem {
     const stories = this.pendingStories;
     this.pendingStories = [];
 
+    // Tome XXVII, ch. 3 : « Chaque matin, de nouveaux articles sont publiés. »
+    // Hors actualité chaude, la rédaction produit ses marronniers : mercato,
+    // analyses, portraits, avant-matchs. Le journal ne sort jamais vide.
+    if (stories.length < 2) {
+      for (const filler of this.buildEditorialFillers(rng)) stories.push(filler);
+    }
+
     // Chaque matin, les journaux paraissent (Tome XXVII, ch. 3).
     for (const story of stories) {
       const outletCount = story.significance === 'historic' ? 4 : story.significance === 'major' ? 3 : 1;
@@ -341,6 +348,45 @@ export class MediaSystem implements GameSystem {
     if (podcast.episodes.length > 60) podcast.episodes.splice(0, podcast.episodes.length - 60);
   }
 
+  /**
+   * Sujets de fond publiés lorsqu'aucun fait marquant ne domine l'actualité.
+   * Ils s'appuient sur l'état réel du monde (club du joueur, forme, saison)
+   * afin de rester crédibles plutôt que décoratifs.
+   */
+  private buildEditorialFillers(
+    rng: ReturnType<SimulationContext['stream']>,
+  ): Array<{ headline: string; significance: Significance; subjects: string[]; tone: number }> {
+    const player = this.career?.hasCareer ? this.career.player : null;
+    const clubId = player?.clubId ?? null;
+    const clubName = clubId ? this.clubName(clubId) : 'les grands clubs';
+    const angles: Array<{ headline: string; tone: number }> = [
+      { headline: `Mercato : les pistes chaudes de ${clubName}`, tone: 0.1 },
+      { headline: `Analyse tactique : ce qui a changé chez ${clubName}`, tone: 0 },
+      { headline: 'Le point médical des effectifs européens', tone: -0.1 },
+      { headline: 'Les jeunes à suivre cette saison', tone: 0.3 },
+      { headline: 'Billetterie et affluences : le baromètre du week-end', tone: 0 },
+      { headline: 'Débat : quel onze type pour la saison ?', tone: 0.1 },
+      { headline: 'Les coulisses des centres de formation', tone: 0.2 },
+    ];
+    if (player) {
+      angles.push({
+        headline:
+          player.form > 0.7
+            ? `${player.identity.name}, la forme des grands jours`
+            : `${player.identity.name} cherche encore son rythme`,
+        tone: player.form > 0.7 ? 0.6 : -0.3,
+      });
+    }
+
+    const picked = rng.pickMany(angles, 2);
+    return picked.map((angle) => ({
+      headline: angle.headline,
+      significance: 'routine' as Significance,
+      subjects: clubId ? [clubId] : [],
+      tone: angle.tone,
+    }));
+  }
+
   private writeArticle(
     outlet: Outlet,
     story: { headline: string; significance: Significance; subjects: string[]; tone: number },
@@ -368,8 +414,8 @@ export class MediaSystem implements GameSystem {
       dialogueTone,
       {
         player: this.playerName(),
-        club: this.career?.player.clubId ? this.clubName(this.career.player.clubId) : undefined,
-        statistic: this.career?.statline(),
+        club: this.playerClubName(),
+        statistic: this.playerStatline(),
       },
       rng,
     ).text;
@@ -418,7 +464,7 @@ export class MediaSystem implements GameSystem {
           tone,
           {
             player: this.playerName(),
-            club: this.career?.player.clubId ? this.clubName(this.career.player.clubId) : undefined,
+            club: this.playerClubName(),
             rival: situation.upcomingRival,
             record: situation.recordBroken,
             teammate: situation.teammateCriticised,
@@ -493,9 +539,9 @@ export class MediaSystem implements GameSystem {
             dialogueTone,
             {
               player: this.playerName(),
-              club: this.career?.player.clubId ? this.clubName(this.career.player.clubId) : undefined,
+              club: this.playerClubName(),
               teammate: undefined,
-              statistic: this.career?.statline(),
+              statistic: this.playerStatline(),
             },
             rng,
           ).text;
@@ -601,6 +647,22 @@ export class MediaSystem implements GameSystem {
 
   private playerName(): string {
     return this.career?.hasCareer ? this.career.player.identity.name : 'le joueur';
+  }
+
+  /**
+   * Nom du club du joueur, sûr même sans carrière active : l'accesseur
+   * `career.player` lève une exception dans ce cas, et la rédaction doit
+   * continuer de tourner quoi qu'il arrive.
+   */
+  private playerClubName(): string | undefined {
+    if (!this.career?.hasCareer) return undefined;
+    const clubId = this.career.player.clubId;
+    return clubId ? this.clubName(clubId) : undefined;
+  }
+
+  /** Ligne statistique du joueur, sûre sans carrière active. */
+  private playerStatline(): string | undefined {
+    return this.career?.hasCareer ? this.career.statline() : undefined;
   }
 
   private clubName(clubId: string): string {

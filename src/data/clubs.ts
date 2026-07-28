@@ -9,6 +9,9 @@
  * sans que le moteur n'en dépende.
  */
 
+import { hashString } from '../core/math.js';
+import { CITIES, type CityDef } from './cities.js';
+
 export interface StadiumDef {
   readonly id: string;
   readonly name: string;
@@ -357,7 +360,109 @@ export const COMPETITIONS: readonly CompetitionDef[] = [
   { id: 'summer-tour', name: 'Tournée Estivale', kind: 'friendly', countryId: null, continent: null, prestige: 45, startMonth: 7, endMonth: 8, everyYears: 1, trophyName: 'Trophée de la Tournée' },
 ] as const;
 
-const CLUB_INDEX = new Map(CLUBS.map((c) => [c.id, c]));
+/**
+ * Complétion automatique des championnats.
+ *
+ * Les clubs ci-dessus sont les formations « vedettes » écrites à la main. Un
+ * championnat crédible en compte davantage : cette étape génère de manière
+ * déterministe les clubs manquants à partir des villes réelles du pays, pour
+ * qu'aucune compétition ne soit dégénérée. Un pack de contenu qui ajoute de
+ * vrais clubs les remplace simplement en réduisant le nombre de places à
+ * combler (Tome XXII, ch. 2).
+ */
+const MIN_CLUBS_PER_LEAGUE = 8;
+
+const FILLER_SUFFIXES = [
+  'Athletic',
+  'Sporting',
+  'United',
+  'Racing',
+  'Olympique',
+  'Union',
+  'Club',
+  'Académie',
+  'Étoile',
+  'Avenir',
+] as const;
+
+const FILLER_NICKNAMES = [
+  'Les Espoirs',
+  'Les Bâtisseurs',
+  'Les Vagues',
+  'Les Sentinelles',
+  'Les Comètes',
+  'Les Ancrés',
+  'Les Braves',
+  'Les Insoumis',
+] as const;
+
+const FILLER_COLOURS: ReadonlyArray<readonly [string, string]> = [
+  ['#1b4f9c', '#ffffff'],
+  ['#c8102e', '#f6e400'],
+  ['#0f7b46', '#ffffff'],
+  ['#f4820b', '#101820'],
+  ['#5b2ea6', '#ffffff'],
+  ['#101820', '#d4af37'],
+  ['#0aa2c0', '#ffffff'],
+  ['#7b1e3a', '#f0e6d2'],
+];
+
+function buildFillerClubs(): ClubDef[] {
+  const fillers: ClubDef[] = [];
+  const authored = new Map<string, number>();
+  for (const club of CLUBS) {
+    authored.set(club.leagueId, (authored.get(club.leagueId) ?? 0) + 1);
+  }
+
+  for (const competition of COMPETITIONS) {
+    if (competition.kind !== 'league' || !competition.countryId) continue;
+    const existing = authored.get(competition.id) ?? 0;
+    const missing = MIN_CLUBS_PER_LEAGUE - existing;
+    if (missing <= 0) continue;
+
+    const countryCities = CITIES.filter((city) => city.countryId === competition.countryId);
+    if (countryCities.length === 0) continue;
+    const usedStadiums = STADIUMS.filter((stadium) =>
+      countryCities.some((city) => city.id === stadium.cityId),
+    );
+
+    for (let index = 0; index < missing; index++) {
+      const city = countryCities[index % countryCities.length] as CityDef;
+      const seed = hashString(`${competition.id}:${index}`);
+      const suffix = FILLER_SUFFIXES[seed % FILLER_SUFFIXES.length] as string;
+      const colours = FILLER_COLOURS[seed % FILLER_COLOURS.length] as readonly [string, string];
+      const nickname = FILLER_NICKNAMES[(seed >>> 3) % FILLER_NICKNAMES.length] as string;
+      // Les clubs générés sont volontairement modestes : ils peuplent le
+      // championnat sans éclipser les formations écrites à la main.
+      const prestige = 42 + ((seed >>> 5) % 18) - Math.min(10, index);
+      const stadium = usedStadiums[index % Math.max(1, usedStadiums.length)];
+
+      fillers.push({
+        id: `${competition.id}-club-${index + 1}`,
+        name: `${city.name} ${suffix}`,
+        shortName: `${city.name.slice(0, 8)} ${suffix.slice(0, 3)}`,
+        cityId: city.id,
+        countryId: competition.countryId,
+        leagueId: competition.id,
+        stadiumId: stadium?.id ?? (STADIUMS[0] as StadiumDef).id,
+        foundedYear: 1900 + ((seed >>> 7) % 90),
+        colors: colours,
+        prestige: Math.max(28, Math.min(70, prestige)),
+        budgetM: Math.max(4, Math.round(prestige * 0.9)),
+        academy: 40 + ((seed >>> 9) % 30),
+        facilities: 38 + ((seed >>> 11) % 32),
+        nickname,
+        rivalIds: [],
+      });
+    }
+  }
+  return fillers;
+}
+
+/** Ensemble complet des clubs : formations écrites à la main puis complétion. */
+export const ALL_CLUBS: readonly ClubDef[] = [...CLUBS, ...buildFillerClubs()];
+
+const CLUB_INDEX = new Map(ALL_CLUBS.map((c) => [c.id, c]));
 const STADIUM_INDEX = new Map(STADIUMS.map((s) => [s.id, s]));
 const COMPETITION_INDEX = new Map(COMPETITIONS.map((c) => [c.id, c]));
 
@@ -388,15 +493,15 @@ export function getCompetition(id: string): CompetitionDef {
 }
 
 export function clubsOfLeague(leagueId: string): ClubDef[] {
-  return CLUBS.filter((c) => c.leagueId === leagueId);
+  return ALL_CLUBS.filter((c) => c.leagueId === leagueId);
 }
 
 export function clubsOfCity(cityId: string): ClubDef[] {
-  return CLUBS.filter((c) => c.cityId === cityId);
+  return ALL_CLUBS.filter((c) => c.cityId === cityId);
 }
 
 export function clubsOfCountry(countryId: string): ClubDef[] {
-  return CLUBS.filter((c) => c.countryId === countryId);
+  return ALL_CLUBS.filter((c) => c.countryId === countryId);
 }
 
 export function stadiumsOfCity(cityId: string): StadiumDef[] {

@@ -269,8 +269,10 @@ export const VENUE_TEMPLATES: readonly VenueTemplate[] = [
 
   tpl('park', 'Parc', ['residentiel', 'centre', 'universitaire'], 6, 22,
     ['allées', 'aire de jeux', 'kiosque'], 0, 5, { minPerCity: 2, capacity: 1500 }),
+  // Une ville côtière possède toujours au moins une plage accessible, même
+  // lorsque sa population est trop faible pour en générer par densité.
   tpl('beach', 'Plage', ['plage'], 0, 24,
-    ['sable', 'poste de secours', 'buvette'], 0, 4, { minPerCity: 0, capacity: 5000 }),
+    ['sable', 'poste de secours', 'buvette'], 0, 4, { minPerCity: 1, capacity: 5000 }),
   tpl('square', 'Place publique', ['centre', 'historique', 'populaire'], 0, 24,
     ['esplanade', 'fontaine'], 0, 4, { minPerCity: 2, capacity: 3000 }),
   tpl('fanZone', 'Fan zone', ['centre', 'sportif'], 12, 24,

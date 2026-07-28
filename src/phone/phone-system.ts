@@ -211,8 +211,10 @@ export interface Note {
 export class PhoneSystem implements GameSystem {
   readonly metadata: SystemMetadata = {
     id: 'phone',
+    // Le téléphone agrège médias, calendrier, commerce et voyages : il doit
+    // donc s'initialiser après eux (l'ordonnanceur initialise par `order`).
     name: 'Smartphone & vie numérique',
-    order: 85,
+    order: 140,
     tomes: ['VIII', 'XI', 'XII'],
   };
 

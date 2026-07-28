@@ -170,8 +170,12 @@ export class SeasonSystem implements GameSystem {
     return undefined;
   }
 
-  /** Enregistre un résultat (match joué par le joueur ou simulé). */
-  recordResult(fixtureId: string, homeGoals: number, awayGoals: number): void {
+  /**
+   * Enregistre un résultat (match joué par le joueur ou simulé).
+   * `announce` reste faux pour les matchs joués par le moteur complet :
+   * l'orchestrateur émet lui-même `match.ended` avec la note du joueur.
+   */
+  recordResult(fixtureId: string, homeGoals: number, awayGoals: number, announce = false): void {
     const fixture = this.fixture(fixtureId);
     if (!fixture || fixture.played) return;
     fixture.played = true;
@@ -179,6 +183,21 @@ export class SeasonSystem implements GameSystem {
     fixture.awayGoals = awayGoals;
     this.applyToTable(fixture);
     this.adjustStrength(fixture);
+
+    // Tome XXVII : le monde entier est couvert par les médias, pas seulement
+    // les rencontres du joueur.
+    if (announce) {
+      this.context.emit({
+        type: 'match.ended',
+        matchId: fixture.id,
+        homeClubId: fixture.homeClubId,
+        awayClubId: fixture.awayClubId,
+        homeGoals,
+        awayGoals,
+        competitionId: fixture.competitionId,
+        playerRating: null,
+      });
+    }
   }
 
   onDay(context: SimulationContext, _date: GameDate): void {
@@ -192,7 +211,7 @@ export class SeasonSystem implements GameSystem {
         // que s'il a été manqué (avance rapide, blessure, vacances).
         if (fixture.involvesPlayer && fixture.kickoff > now - 24 * 60) continue;
         const result = this.quickSimulate(fixture, rng);
-        this.recordResult(fixture.id, result.home, result.away);
+        this.recordResult(fixture.id, result.home, result.away, true);
       }
       this.checkCompletion(season, context);
     }

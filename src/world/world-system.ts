@@ -114,14 +114,47 @@ export class WorldSystem implements GameSystem {
     }
   }
 
+  /**
+   * Niveau de détail de simulation (Tome XV, ch. 7 — performances).
+   *
+   * La météo, le trafic et les événements de rue sont mis à jour partout, à
+   * l'heure : ce sont des calculs par ville, donc bornés. En revanche les
+   * mises à jour par lieu (ouvertures, fréquentation) ne concernent que les
+   * villes « détaillées » : celle où se trouve le joueur et celles qui
+   * accueillent un événement mondial. Les autres sont rafraîchies une fois par
+   * jour, ce qui reste exact du point de vue du joueur — il n'y est pas — tout
+   * en divisant le coût par plus de cinquante.
+   */
+  private readonly detailedCityIds = new Set<string>();
+
+  /** Déclare la ville où se trouve le joueur : elle passe en détail complet. */
+  setFocusCity(cityId: string): void {
+    this.detailedCityIds.clear();
+    this.detailedCityIds.add(cityId);
+    for (const city of this.runtime.cities.values()) {
+      if (city.festivity > 0.3) this.detailedCityIds.add(city.id);
+    }
+  }
+
+  /** Villes actuellement simulées avec le détail maximal. */
+  get focusedCities(): string[] {
+    return [...this.detailedCityIds];
+  }
+
+  private isDetailed(cityId: string): boolean {
+    if (this.detailedCityIds.size === 0) return true;
+    return this.detailedCityIds.has(cityId);
+  }
+
   onHour(context: SimulationContext, date: GameDate): void {
     this.weatherPhase += 1;
     for (const city of this.runtime.cities.values()) {
       this.updateWeather(city, date, this.weatherPhase);
-      this.updateVenueOpening(city, date);
       this.updateTraffic(city, date);
-      this.updateOccupancy(city, date);
       this.expireStreetEvents(city, context);
+      if (!this.isDetailed(city.id)) continue;
+      this.updateVenueOpening(city, date);
+      this.updateOccupancy(city, date);
     }
   }
 
@@ -132,6 +165,12 @@ export class WorldSystem implements GameSystem {
       this.rollBusinessLifecycle(city, context, date);
       this.rollNaturalHazard(city, context, date);
       this.updateHotelOccupancy(city);
+      // Rattrapage quotidien pour les villes hors du champ du joueur : leurs
+      // commerces restent cohérents sans coûter une passe par heure.
+      if (!this.isDetailed(city.id)) {
+        this.updateVenueOpening(city, date);
+        this.updateOccupancy(city, date);
+      }
     }
   }
 

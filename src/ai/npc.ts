@@ -183,17 +183,30 @@ export class NpcSystem implements GameSystem {
     return this.all.filter((npc) => npc.currentVenueId === venueId);
   }
 
+  /**
+   * Emplois du temps : seuls les PNJ des villes détaillées sont réévalués
+   * chaque heure (Tome XV, ch. 7). Les autres suivent une passe quotidienne :
+   * leur vie continue, mais sans coût horaire inutile puisque le joueur ne les
+   * observe pas.
+   */
   onHour(context: SimulationContext, date: GameDate): void {
     const rng = context.stream('npc.schedule');
+    const focused = new Set(this.world.focusedCities);
     for (const npc of this.npcs.values()) {
       if (npc.travelling) continue;
+      if (focused.size > 0 && !focused.has(npc.cityId)) continue;
       this.updateActivity(npc, date, rng);
     }
   }
 
-  onDay(context: SimulationContext, _date: GameDate): void {
+  onDay(context: SimulationContext, date: GameDate): void {
     const rng = context.stream('npc.daily');
+    const focused = new Set(this.world.focusedCities);
     for (const npc of this.npcs.values()) {
+      // Rattrapage pour les PNJ hors du champ du joueur.
+      if (!npc.travelling && focused.size > 0 && !focused.has(npc.cityId)) {
+        this.updateActivity(npc, date, rng);
+      }
       // Voyages ponctuels : le monde bouge même sans le joueur.
       if (!npc.travelling && rng.chance(0.004 + npc.personality.openness * 0.006)) {
         npc.travelling = true;

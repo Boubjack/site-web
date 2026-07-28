@@ -112,6 +112,16 @@ const GOAL_CORES = [
   '{player} arme une frappe sèche à l’entrée de la surface',
   '{player} profite d’un ballon relâché',
   '{player} conclut le contre en trois passes',
+  '{player} ajuste le gardien d’un plat du pied millimétré',
+  '{player} trompe tout le monde d’une talonnade',
+  '{player} surgit au second poteau, totalement oublié',
+  '{player} claque une demi-volée en pivot',
+  '{player} efface son vis-à-vis et croise sa frappe',
+  '{player} reprend le centre de la tête, plein axe',
+  '{player} récupère haut et fusille le portier',
+  '{player} conclut un une-deux parfaitement joué',
+  '{player} envoie une praline sous la barre',
+  '{player} pousse au fond après un festival dans la surface',
 ];
 
 const GOAL_TAILS = [
@@ -124,6 +134,29 @@ const GOAL_TAILS = [
   'à la {minute}e minute',
   'et {club} passe devant',
   'score : {score}',
+  'le banc de {club} déborde sur la pelouse',
+  'les caméras cherchent {familyMember} dans les tribunes',
+  'voilà un but qui va compter dans la saison',
+  'le gardien de {opponent} n’a rien pu faire',
+  'un but d’une propreté rare',
+  'ça change complètement la physionomie du match',
+  'le virage entonne son nom',
+];
+
+/** Compléments circonstanciels : ajoutent du contexte sans jamais forcer. */
+const DETAIL_CLAUSES = [
+  'dans un {stadium} bouillant',
+  'sous les yeux de {familyMember}',
+  'face à {opponent}, comme la saison passée',
+  'avec {statistic} depuis le début de saison',
+  'lui qui revenait d’une {injury}',
+  'devant les recruteurs présents en tribune',
+  'alors que {manager} venait de donner ses consignes',
+  'dans le sillage de son {trophy}',
+  'sous une pression maximale en {competition}',
+  'avec le calme de ses années à {formerClub}',
+  'ce que {legend} appelait l’instinct du grand joueur',
+  'à {city}, là où tout a commencé pour lui',
 ];
 
 const CHANCE_CORES = [
@@ -134,6 +167,11 @@ const CHANCE_CORES = [
   '{player} sert {teammate} dans la surface',
   '{player} déborde et centre en retrait',
   '{player} obtient un coup franc idéalement placé',
+  '{player} se retourne dans un mouchoir et frappe',
+  '{player} hérite du ballon au point de penalty',
+  '{player} tente le lob depuis le rond central',
+  '{player} déclenche une frappe enroulée du droit',
+  '{player} coupe au premier poteau sur corner',
 ];
 
 const CHANCE_TAILS = [
@@ -144,6 +182,10 @@ const CHANCE_TAILS = [
   'c’était l’occasion du match',
   'la défense de {opponent} s’en sort bien',
   'il va s’en vouloir',
+  'la barre transversale sauve {opponent}',
+  'un défenseur dévie in extremis',
+  'le drapeau se lève, hors-jeu signalé',
+  'le ballon fuit le cadre de peu',
 ];
 
 const SAVE_CORES = [
@@ -152,6 +194,9 @@ const SAVE_CORES = [
   'main ferme sur la frappe de {player}',
   'le gardien claque le ballon en corner',
   'sortie autoritaire dans les pieds de {player}',
+  'le portier reste debout jusqu’au bout',
+  'parade du bout des doigts sur la tentative de {player}',
+  'le gardien capte en deux temps sans trembler',
 ];
 
 const FOUL_CORES = [
@@ -160,6 +205,9 @@ const FOUL_CORES = [
   'accrochage entre {player} et un défenseur de {opponent}',
   'tacle en retard, l’arbitre laisse jouer un instant',
   'la faute est logique, le tempo devenait dangereux',
+  'l’arbitre temporise puis revient à la faute',
+  'contact épaule contre épaule, la décision fait débat',
+  'obstruction manifeste sur la relance de {player}',
 ];
 
 const CONTEXT_CORES = [
@@ -169,6 +217,10 @@ const CONTEXT_CORES = [
   'l’ambiance à {city} est électrique',
   'le rythme est retombé après la {minute}e minute',
   '{manager} donne des consignes très offensives',
+  'le bloc de {opponent} s’est resserré de dix mètres',
+  '{club} accélère sur les côtés depuis le retour des vestiaires',
+  'les duels se durcissent au milieu de terrain',
+  'le score de {score} ne reflète pas la physionomie du match',
 ];
 
 const MEMORY_CORES = [
@@ -292,39 +344,73 @@ const TONE_SUFFIXES: Record<DialogueTone, readonly string[]> = {
 
 const GRAMMARS: Record<DialogueRegister, RegisterGrammar> = {
   'commentaire.but': {
-    slots: [{ options: OPENERS_NEUTRAL, optional: true }, { options: GOAL_CORES }, { options: GOAL_TAILS }],
+    slots: [
+      { options: OPENERS_NEUTRAL, optional: true },
+      { options: GOAL_CORES },
+      { options: GOAL_TAILS },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'commentaire.occasion': {
-    slots: [{ options: OPENERS_NEUTRAL, optional: true }, { options: CHANCE_CORES }, { options: CHANCE_TAILS }],
+    slots: [
+      { options: OPENERS_NEUTRAL, optional: true },
+      { options: CHANCE_CORES },
+      { options: CHANCE_TAILS },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'commentaire.arret': {
-    slots: [{ options: SAVE_CORES }, { options: CHANCE_TAILS, optional: true }],
+    slots: [
+      { options: SAVE_CORES },
+      { options: CHANCE_TAILS, optional: true },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'commentaire.faute': {
-    slots: [{ options: FOUL_CORES }, { options: CONTEXT_CORES, optional: true }],
+    slots: [
+      { options: FOUL_CORES },
+      { options: CONTEXT_CORES, optional: true },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'commentaire.contexte': {
-    slots: [{ options: CONTEXT_CORES }, { options: MEMORY_CORES, optional: true }],
+    slots: [
+      { options: CONTEXT_CORES },
+      { options: MEMORY_CORES, optional: true },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'commentaire.memoire': {
-    slots: [{ options: MEMORY_CORES }, { options: CONTEXT_CORES, optional: true }],
+    slots: [
+      { options: MEMORY_CORES },
+      { options: CONTEXT_CORES, optional: true },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'commentaire.final': {
-    slots: [{ options: FINAL_CORES }, { options: MEMORY_CORES, optional: true }],
+    slots: [
+      { options: FINAL_CORES },
+      { options: MEMORY_CORES, optional: true },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'presse.question': {
-    slots: [{ options: PRESS_QUESTION_CORES }],
+    slots: [{ options: PRESS_QUESTION_CORES }, { options: DETAIL_CLAUSES, optional: true }],
     tones: TONE_SUFFIXES,
   },
   'presse.reponse': {
-    slots: [{ options: PRESS_ANSWER_CORES }, { options: MEMORY_CORES, optional: true }],
+    slots: [
+      { options: PRESS_ANSWER_CORES },
+      { options: MEMORY_CORES, optional: true },
+      { options: DETAIL_CLAUSES, optional: true },
+    ],
     tones: TONE_SUFFIXES,
   },
   'supporter.rue': { slots: [{ options: FAN_STREET_CORES }], tones: TONE_SUFFIXES },

@@ -299,11 +299,15 @@ export class GameClock {
   /** Avance d'un nombre exact de minutes de jeu en déclenchant les paliers. */
   advanceMinutes(minutes: number, callbacks: ClockCallbacks = {}): number {
     if (minutes <= 0) return 0;
-    // On avance par tranches d'une journée maximum pour ne jamais sauter
-    // un palier lors des grands sauts (voyages, vacances, avance rapide).
+    // On s'arrête exactement sur chaque frontière horaire : aucun palier ne
+    // peut être sauté lors des grands sauts (voyages, vacances, avance
+    // rapide sur plusieurs saisons), ce qui garantit que la météo, les
+    // ouvertures de commerces et les emplois du temps restent cohérents.
     let remaining = Math.floor(minutes);
     while (remaining > 0) {
-      const step = Math.min(remaining, MINUTES_PER_DAY);
+      const minutesIntoHour = ((this.absolute % MINUTES_PER_HOUR) + MINUTES_PER_HOUR) % MINUTES_PER_HOUR;
+      const untilNextHour = MINUTES_PER_HOUR - minutesIntoHour;
+      const step = Math.min(remaining, untilNextHour);
       this.absolute += step;
       remaining -= step;
       this.fireBoundaries(callbacks);

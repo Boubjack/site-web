@@ -196,6 +196,30 @@ export {
 } from './football/player-physics.js';
 export type { PlayerBody, PhysicalProfile } from './football/player-physics.js';
 
+// Perception & décision (Tomes III, VIII)
+export {
+  perceive,
+  createPerceptionCache,
+  awarenessOf,
+  visualClarity,
+  passingLane,
+  spaceAt,
+  positionalValue,
+  spotMistake,
+  offsideLine,
+  isOffside,
+  scanRate,
+} from './football/perception.js';
+export type {
+  MatchActor,
+  WorldState,
+  Perception,
+  PerceivedActor,
+  PerceptionCache,
+} from './football/perception.js';
+export { decideOnBall, decideOffBall, decideKeeperPositioning, roleOf } from './football/decision.js';
+export type { OnBallAction, OffBallAction, DecisionContext, RoleFamily } from './football/decision.js';
+
 // Football de rue
 export { StreetFootballSystem, STREET_SERVICE } from './street/street-system.js';
 export type {

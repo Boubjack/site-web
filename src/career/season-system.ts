@@ -11,7 +11,8 @@
  * rencontres auxquelles le joueur ne participe pas et couronne les champions.
  */
 
-import { clamp, round } from '../core/math.js';
+import { clamp, hashString, round } from '../core/math.js';
+import { MINUTES_PER_DAY } from '../core/clock.js';
 import type { GameDate } from '../core/clock.js';
 import type { SimulationContext } from '../core/context.js';
 import type { GameSystem, SystemMetadata } from '../core/system.js';
@@ -76,6 +77,19 @@ export interface SeasonHonours {
   readonly trophyName: string;
 }
 
+/**
+ * Créneaux de coup d'envoi réels. L'espacement du calendrier tombe sur des
+ * minutes arbitraires (09:42, 23:24…) : on ramène chaque rencontre sur un
+ * horaire de diffusion plausible, de façon déterministe par rencontre.
+ */
+const KICKOFF_SLOTS = [13 * 60, 15 * 60, 17 * 60 + 30, 19 * 60, 20 * 60 + 45, 21 * 60];
+
+function snapKickoff(minutes: number, fixtureId: string): number {
+  const day = Math.floor(minutes / MINUTES_PER_DAY);
+  const slot = KICKOFF_SLOTS[hashString(fixtureId) % KICKOFF_SLOTS.length] ?? 15 * 60;
+  return day * MINUTES_PER_DAY + slot;
+}
+
 function emptyRow(clubId: string): TableRow {
   return { clubId, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
 }
@@ -85,7 +99,7 @@ export class SeasonSystem implements GameSystem {
     id: 'season',
     name: 'Saisons & compétitions',
     order: 50,
-    tomes: ['XVII', 'XIX', 'XXVIII'],
+    tomes: ['III', 'XVII', 'XIX', 'XXVIII'],
   };
 
   private context!: SimulationContext;
@@ -390,12 +404,13 @@ export class SeasonSystem implements GameSystem {
     kickoff: number,
     round: string | null,
   ): Fixture {
+    const id = `${competition.id}:${season}:${matchday}:${homeClubId}:${awayClubId}`;
     return {
-      id: `${competition.id}:${season}:${matchday}:${homeClubId}:${awayClubId}`,
+      id,
       competitionId: competition.id,
       homeClubId,
       awayClubId,
-      kickoff,
+      kickoff: snapKickoff(kickoff, id),
       matchday,
       season,
       round,
@@ -449,8 +464,10 @@ export class SeasonSystem implements GameSystem {
     }
     const homeAdvantage = 1 + atmosphere * 0.18;
     const ratio = (homeStrength * homeAdvantage) / Math.max(1, homeStrength * homeAdvantage + awayStrength);
-    const homeLambda = clamp(0.45 + ratio * 2.6, 0.2, 4.2);
-    const awayLambda = clamp(0.45 + (1 - ratio) * 2.3, 0.15, 4);
+    // Calibré sur les moyennes réelles des grands championnats :
+    // ≈ 2,7 buts par match, ≈ 45 % de victoires à domicile, ≈ 25 % de nuls.
+    const homeLambda = clamp(0.26 + ratio * 2.16, 0.2, 3.4);
+    const awayLambda = clamp(0.26 + (1 - ratio) * 1.94, 0.15, 3.0);
     return { home: poisson(homeLambda, rng), away: poisson(awayLambda, rng) };
   }
 
@@ -519,12 +536,15 @@ export class SeasonSystem implements GameSystem {
       trophyName: competition.trophyName,
     });
 
+    // Titre du monde : la carrière du joueur n'est concernée que si son club
+    // est champion, ce que CareerSystem décide de son côté.
     context.emit({
-      type: 'career.trophyWon',
-      playerId: championClub.id,
-      trophyId: `${season.competitionId}:${season.season}`,
-      trophyName: competition.trophyName,
+      type: 'competition.decided',
       competitionId: season.competitionId,
+      competitionName: competition.name,
+      trophyName: competition.trophyName,
+      championClubId: champion.clubId,
+      championName: championClub.name,
       season: season.season,
     });
     context.logger.info('compétition terminée', {

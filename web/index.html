@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infinity Football — Tableau de bord du monde vivant</title>
+<meta name="description" content="Tableau de bord temps réel du moteur de simulation Infinity Football : monde ouvert, carrière, presse, téléphone, matchs, qualité.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+<style>
+  :root {
+    --bg: #080d0b;
+    --bg-panel: #0f1714;
+    --bg-panel-2: #131d19;
+    --line: #223029;
+    --text: #dbe7e0;
+    --muted: #7d938a;
+    --accent: #35d07f;
+    --accent-dim: #1d7a4b;
+    --warn: #e2b23c;
+    --bad: #e2614b;
+    --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #10241a 0%, transparent 60%),
+      radial-gradient(900px 500px at 90% 0%, #0d1d2a 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 1.25rem 1.25rem 4rem; }
+
+  /* ---- Bandeau ---- */
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem;
+    padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+    background: linear-gradient(180deg, #16241d, #0f1714);
+    border: 1px solid var(--line); border-radius: var(--radius);
+  }
+  .brand { font-size: 1.15rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  .brand span { color: var(--accent); }
+  .clock { font-family: var(--mono); font-size: .95rem; color: var(--muted); }
+  .clock b { color: var(--text); font-weight: 600; }
+  .grade {
+    margin-left: auto; display: flex; align-items: baseline; gap: .5rem;
+    font-family: var(--mono); white-space: nowrap;
+  }
+  .grade .score { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .live {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+  /* ---- Commandes ---- */
+  .controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; align-items: center; }
+  button {
+    font: inherit; font-size: .88rem; color: var(--text); cursor: pointer;
+    background: var(--bg-panel-2); border: 1px solid var(--line);
+    border-radius: 7px; padding: .48rem .85rem; transition: border-color .15s, background .15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent-dim); background: #17251e; }
+  button:disabled { opacity: .45; cursor: progress; }
+  button.primary { background: var(--accent-dim); border-color: var(--accent); color: #eafff3; }
+  button.primary:hover:not(:disabled) { background: #24925b; }
+  input[type=text] {
+    font: inherit; font-family: var(--mono); font-size: .85rem; color: var(--text);
+    background: #0b120f; border: 1px solid var(--line); border-radius: 7px;
+    padding: .48rem .7rem; min-width: 190px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent-dim); }
+
+  /* ---- Grille ---- */
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem; }
+  .card {
+    grid-column: span 4;
+    background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem 1.1rem 1.15rem; min-width: 0;
+  }
+  .card.w6 { grid-column: span 6; }
+  .card.w8 { grid-column: span 8; }
+  .card.w12 { grid-column: span 12; }
+  @media (max-width: 1150px) { .card, .card.w6, .card.w8 { grid-column: span 6; } }
+  @media (max-width: 760px) { .card, .card.w6, .card.w8, .card.w12 { grid-column: span 12; } }
+
+  .card h2 {
+    margin: 0 0 .75rem; font-size: .75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .12em; color: var(--accent);
+    display: flex; justify-content: space-between; align-items: baseline; gap: .5rem;
+  }
+  .card h2 small { color: var(--muted); font-weight: 500; letter-spacing: .04em; text-transform: none; }
+
+  .kv { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; border-bottom: 1px solid #18231e; }
+  .kv:last-child { border-bottom: 0; }
+  .kv span { color: var(--muted); font-size: .87rem; }
+  .kv b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: .6rem; margin-bottom: .85rem; }
+  .stat { background: var(--bg-panel-2); border-radius: 8px; padding: .55rem .6rem; text-align: center; }
+  .stat b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li { padding: .38rem 0; border-bottom: 1px solid #18231e; font-size: .88rem; }
+  ul.list li:last-child { border-bottom: 0; }
+  .meta { color: var(--muted); font-size: .78rem; }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted); font-style: italic; font-size: .88rem; padding: .4rem 0; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .tag {
+    font-size: .74rem; padding: .18rem .5rem; border-radius: 20px;
+    background: var(--bg-panel-2); border: 1px solid var(--line); color: var(--muted);
+    white-space: nowrap;
+  }
+  .tag.on { border-color: var(--accent-dim); color: var(--accent); }
+  .tag.off { border-color: #4a2a25; color: var(--bad); }
+
+  .bar { height: 5px; border-radius: 3px; background: #18231e; overflow: hidden; margin-top: .25rem; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .bar.warn > i { background: var(--warn); }
+  .bar.bad > i { background: var(--bad); }
+
+  /* ---- Match ---- */
+  .score-line { display: flex; align-items: center; justify-content: center; gap: 1rem; margin: .3rem 0 .9rem; }
+  .score-line .team { flex: 1; text-align: center; font-weight: 600; }
+  .score-line .sc {
+    font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--accent);
+    background: var(--bg-panel-2); border-radius: 8px; padding: .1rem .8rem;
+  }
+  .heatmap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: .6rem 0; }
+  .heatmap div {
+    aspect-ratio: 16/9; border-radius: 3px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .68rem; font-family: var(--mono); color: #04160c;
+  }
+  blockquote {
+    margin: .5rem 0 0; padding: .5rem .8rem; border-left: 2px solid var(--accent-dim);
+    background: var(--bg-panel-2); border-radius: 0 6px 6px 0; font-size: .87rem; font-style: italic;
+  }
+  blockquote cite { display: block; font-style: normal; font-size: .75rem; color: var(--muted); margin-top: .25rem; }
+
+  pre.console {
+    font-family: var(--mono); font-size: .8rem; line-height: 1.5; margin: 0;
+    background: #060a08; border: 1px solid var(--line); border-radius: 8px;
+    padding: .75rem .85rem; max-height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  pre.console .err { color: var(--bad); }
+  pre.console .cmd { color: var(--accent); }
+
+  footer.foot { margin-top: 2rem; text-align: center; color: var(--muted); font-size: .8rem; }
+  .flash {
+    position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+    background: var(--accent-dim); border: 1px solid var(--accent); color: #eafff3;
+    padding: .5rem 1rem; border-radius: 8px; font-size: .85rem;
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand"><span>⚽</span> Infinity Football</div>
+    <div class="clock" id="clock">connexion au monde…</div>
+    <div class="live"><i class="dot"></i> monde en cours d'exécution</div>
+    <div class="grade">
+      <span class="score" id="grade-score">—</span>
+      <span class="muted" id="grade-label"></span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button data-days="1">+ 1 jour</button>
+    <button data-days="7">+ 1 semaine</button>
+    <button data-days="30">+ 1 mois</button>
+    <button class="primary" id="btn-match">Jouer le prochain match</button>
+    <button id="btn-ceremony">Boubjack Awards</button>
+    <input type="text" id="cmd" placeholder="console : aide, monde, perf…" autocomplete="off" spellcheck="false">
+    <button id="btn-cmd">Exécuter</button>
+  </div>
+
+  <div class="grid" id="grid">
+
+    <section class="card w6">
+      <h2>Carrière <small id="career-club"></small></h2>
+      <div id="career"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>Monde vivant <small id="city-name"></small></h2>
+      <div id="city"></div>
+    </section>
+
+    <section class="card">
+      <h2>Presse du jour</h2>
+      <ul class="list" id="press"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Alertes &amp; calendrier</h2>
+      <ul class="list" id="alerts"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Patrimoine</h2>
+      <div id="economy"></div>
+    </section>
+
+    <section class="card w8">
+      <h2>Dernier match <small id="match-comp"></small></h2>
+      <div id="match"></div>
+    </section>
+
+    <section class="card">
+      <h2>Smartphone <small id="phone-battery"></small></h2>
+      <div id="phone"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>Lieux ouverts &amp; habitants</h2>
+      <div id="venues"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>IA secrétaire</h2>
+      <div id="secretary"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>Qualité &amp; équilibrage</h2>
+      <div id="quality"></div>
+    </section>
+
+    <section class="card w6">
+      <h2>Console développeur</h2>
+      <pre class="console" id="console">Tapez une commande ci-dessus. « aide » liste les commandes disponibles.</pre>
+    </section>
+
+    <section class="card w12">
+      <h2>Systèmes actifs <small id="systems-count"></small></h2>
+      <div class="tags" id="systems"></div>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    Moteur de simulation Infinity Football — le monde continue d'avancer même sans visiteur.
+  </footer>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<script type="module">
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const esc = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+const nf = new Intl.NumberFormat('fr-FR');
+const euros = (value) => `${nf.format(Math.round(Number(value) || 0))} €`;
+const pct = (value) => `${Math.round((Number(value) || 0) * 100)} %`;
+
+const WEATHER_FR = {
+  clear: 'ciel dégagé',
+  cloudy: 'nuageux',
+  rain: 'pluie',
+  heavyRain: 'fortes pluies',
+  storm: 'orage',
+  snow: 'neige',
+  fog: 'brouillard',
+  heatwave: 'canicule',
+};
+
+/** La tonalité d'un article est un nombre -1..+1 côté moteur. */
+function toneLabel(tone) {
+  const value = Number(tone) || 0;
+  if (value > 0.4) return 'élogieux';
+  if (value > 0.1) return 'favorable';
+  if (value < -0.4) return 'à charge';
+  if (value < -0.1) return 'critique';
+  return 'neutre';
+}
+
+/** Ligne clé → valeur. */
+function kv(label, value) {
+  return `<div class="kv"><span>${esc(label)}</span><b>${esc(value)}</b></div>`;
+}
+
+/** Jauge 0→1 colorée selon le niveau. */
+function gauge(label, ratio) {
+  const clamped = Math.max(0, Math.min(1, Number(ratio) || 0));
+  const tone = clamped < 0.34 ? ' bad' : clamped < 0.6 ? ' warn' : '';
+  return `<div class="kv"><span>${esc(label)}</span><b>${Math.round(clamped * 100)}</b></div>
+          <div class="bar${tone}"><i style="width:${(clamped * 100).toFixed(1)}%"></i></div>`;
+}
+
+function stat(value, label) {
+  return `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`;
+}
+
+let flashTimer = null;
+function flash(message) {
+  const node = $('flash');
+  node.textContent = message;
+  node.classList.add('show');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => node.classList.remove('show'), 2600);
+}
+
+/* ------------------------------------------------------------------ rendu */
+
+function renderHeader(state) {
+  const s = state.snapshot;
+  $('clock').innerHTML =
+    `<b>${esc(s.date)}</b> · ${esc(s.time)} · saison <b>${esc(s.season)}</b>/${esc(s.season + 1)} · ` +
+    `${nf.format(s.cityCount)} villes · ${nf.format(s.venueCount)} lieux · ` +
+    `${nf.format(s.npcCount)} PNJ · ${nf.format(s.eventsEmitted)} événements`;
+  $('grade-score').textContent = `${Math.round(state.quality.global * 100)}`;
+  $('grade-label').textContent = state.grade;
+}
+
+function renderCareer(state) {
+  const p = state.snapshot.player;
+  if (!p) {
+    $('career').innerHTML = '<p class="empty">Aucune carrière active.</p>';
+    return;
+  }
+  $('career-club').textContent = `${p.name} · ${p.position} · ${p.age} ans`;
+  $('career').innerHTML =
+    `<div class="stats">
+       ${stat(p.overall, 'note')}
+       ${stat(p.goals, 'buts')}
+       ${stat(p.assists, 'passes')}
+       ${stat(p.appearances, 'matchs')}
+       ${stat(p.trophies, 'trophées')}
+       ${stat(p.awards, 'récompenses')}
+     </div>
+     ${kv('Club', p.club ?? 'agent libre')}
+     ${kv('Valeur marchande', euros(p.marketValue))}
+     ${gauge('Forme', p.form)}
+     ${gauge('Condition physique', p.fitness)}
+     ${gauge('Moral', p.morale)}
+     ${gauge('Réputation', p.reputation / 100)}
+     ${gauge('Célébrité', p.fame / 100)}
+     ${p.legend ? '<p class="meta">Statut : légende du jeu.</p>' : ''}
+     ${p.retired ? '<p class="meta">Carrière terminée — vie d\'après en cours.</p>' : ''}`;
+}
+
+function renderCity(state) {
+  const c = state.city;
+  $('city-name').textContent = c.name;
+  const events = c.streetEvents.length
+    ? c.streetEvents.map((e) => `<span class="tag on">${esc(e)}</span>`).join('')
+    : '<span class="tag">rues calmes</span>';
+  const decorations = (c.decorations ?? []).length
+    ? c.decorations.map((d) => `<span class="tag">${esc(d)}</span>`).join('')
+    : '';
+  $('city').innerHTML =
+    `<div class="stats">
+       ${stat(c.districts, 'quartiers')}
+       ${stat(nf.format(c.venues), 'lieux')}
+       ${stat(nf.format(c.streets), 'rues')}
+     </div>
+     ${kv('Météo', `${WEATHER_FR[c.weather.condition] ?? c.weather.condition}, ${c.weather.temperatureC} °C`)}
+     ${kv('Vent / humidité', `${c.weather.windKmh} km/h · ${pct(c.weather.humidity)}`)}
+     ${kv('Pelouse', pct(c.weather.pitchQuality))}
+     ${gauge('Trafic', c.traffic)}
+     ${gauge('Occupation hôtelière', c.hotelOccupancy)}
+     <p class="meta" style="margin:.7rem 0 .3rem">Dans les rues</p>
+     <div class="tags">${events}${decorations}</div>`;
+}
+
+function renderPress(state) {
+  $('press').innerHTML = state.press.length
+    ? state.press
+        .map(
+          (a) =>
+            `<li>${esc(a.headline)}<div class="meta">${esc(a.outlet)} · ton ${esc(toneLabel(a.tone))}</div></li>`,
+        )
+        .join('')
+    : '<li class="empty">Aucun article publié pour l\'instant.</li>';
+}
+
+function renderAlerts(state) {
+  const alerts = state.alerts.map((text) => `<li>${esc(text)}</li>`);
+  const calendar = state.calendar.map(
+    (e) =>
+      `<li>${esc(e.name)}<div class="meta">ampleur ${e.magnitude.toFixed(2)} · ${e.fanZones} fan zone(s)</div></li>`,
+  );
+  const html = [...alerts, ...calendar].join('');
+  $('alerts').innerHTML = html || '<li class="empty">Rien à signaler.</li>';
+}
+
+function renderEconomy(state) {
+  const e = state.snapshot.economy;
+  $('economy').innerHTML =
+    kv('Liquidités', euros(e.liquidity)) +
+    kv('Patrimoine net', euros(e.netWorth)) +
+    kv('Charges mensuelles', euros(e.monthlyCommitments)) +
+    kv('Biens immobiliers', e.properties) +
+    kv('Véhicules', e.vehicles) +
+    kv('Investissements', e.investments);
+}
+
+function renderMatch(state) {
+  const m = state.lastMatch;
+  if (!m) {
+    $('match-comp').textContent = '';
+    $('match').innerHTML =
+      '<p class="empty">Aucun match joué. Utilisez « Jouer le prochain match ».</p>';
+    return;
+  }
+  $('match-comp').textContent = m.competition;
+
+  const max = Math.max(1, ...m.heatmap);
+  const heat = m.heatmap
+    .map((value) => {
+      const ratio = value / max;
+      return `<div style="opacity:${(0.12 + ratio * 0.88).toFixed(2)}">${Math.round(ratio * 100)}</div>`;
+    })
+    .join('');
+
+  const highlights = m.highlights.length
+    ? m.highlights
+        .map((h) => `<li><b>${h.minute}′</b> ${esc(h.detail)}<div class="meta">${esc(h.kind)}</div></li>`)
+        .join('')
+    : '<li class="empty">Match sans temps fort marquant.</li>';
+
+  const commentary = m.commentary
+    .map((line) => `<blockquote>${esc(line.text)}<cite>${esc(line.who)}</cite></blockquote>`)
+    .join('');
+
+  $('match').innerHTML =
+    `<div class="score-line">
+       <div class="team">${esc(m.home)}</div>
+       <div class="sc">${esc(m.score)}</div>
+       <div class="team">${esc(m.away)}</div>
+     </div>
+     ${kv('Stade', `${m.stadium} · ${nf.format(m.attendance)} spectateurs`)}
+     ${kv('Arbitre', m.referee)}
+     ${kv('Note du joueur', m.rating === null ? 'non aligné' : m.rating)}
+     <p class="meta" style="margin:.8rem 0 .2rem">Carte de chaleur (4 × 3 zones, % du pic)</p>
+     <div class="heatmap">${heat}</div>
+     <p class="meta" style="margin:.6rem 0 .2rem">Temps forts</p>
+     <ul class="list">${highlights}</ul>
+     <p class="meta" style="margin:.8rem 0 .2rem">Analyse d'après-match</p>
+     <p style="font-size:.88rem;margin:.2rem 0">${esc(m.analysis)}</p>
+     ${m.advice.map((a) => `<p class="meta">→ ${esc(a)}</p>`).join('')}
+     ${commentary}`;
+}
+
+function renderPhone(state) {
+  const p = state.phone;
+  $('phone-battery').textContent = `batterie ${Math.round(p.battery * 100)} %`;
+  const badges = new Map(Object.entries(p.badges ?? {}));
+  const apps = p.apps
+    .map((app) => {
+      const count = badges.get(app.id) ?? 0;
+      const label = count > 0 ? `${app.icon} ${esc(app.name)} · ${count}` : `${app.icon} ${esc(app.name)}`;
+      return `<span class="tag${count > 0 ? ' on' : ''}">${label}</span>`;
+    })
+    .join('');
+  const trends = (p.trends ?? [])
+    .slice(0, 6)
+    .map((t) => {
+      const label = String(typeof t === 'string' ? t : (t.tag ?? t.label ?? '')).replace(/^#+/, '');
+      return `<span class="tag">#${esc(label)}</span>`;
+    })
+    .join('');
+  $('phone').innerHTML =
+    kv('Abonnés', nf.format(p.followers)) +
+    `<p class="meta" style="margin:.7rem 0 .3rem">${p.apps.length} applications</p>
+     <div class="tags">${apps}</div>
+     ${trends ? `<p class="meta" style="margin:.7rem 0 .3rem">Tendances</p><div class="tags">${trends}</div>` : ''}`;
+}
+
+function renderVenues(state) {
+  const venues = state.openVenues.length
+    ? state.openVenues
+        .map(
+          (v) =>
+            `<li>${esc(v.name)}<div class="meta">${esc(v.type)} · ${nf.format(v.occupancy)} / ${nf.format(v.capacity)} personnes</div></li>`,
+        )
+        .join('')
+    : '<li class="empty">Tous les lieux sont fermés à cette heure.</li>';
+  const npcs = state.npcs.length
+    ? state.npcs
+        .map(
+          (n) =>
+            `<li>${esc(n.name)} <span class="meta">${n.age} ans, ${esc(n.occupation)}</span>` +
+            `<div class="meta">${esc(n.activity ?? 'sans activité')}${n.club ? ` · supporte ${esc(n.club)}` : ''}</div></li>`,
+        )
+        .join('')
+    : '<li class="empty">Aucun habitant chargé.</li>';
+  $('venues').innerHTML =
+    `<p class="meta" style="margin:0 0 .2rem">Lieux ouverts</p>
+     <ul class="list">${venues}</ul>
+     <p class="meta" style="margin:.9rem 0 .2rem">Habitants alentour</p>
+     <ul class="list">${npcs}</ul>`;
+}
+
+function renderSecretary(state) {
+  const s = state.secretary;
+  $('secretary').innerHTML =
+    `<p style="margin:0 0 .5rem">${esc(s.salutation)}</p>
+     <p class="meta" style="margin:0 0 .2rem">${esc(s.finances)}</p>
+     <p class="meta" style="margin:0 0 .7rem">${esc(s.performance)}</p>
+     <p class="meta" style="margin:0 0 .2rem">Agenda</p>
+     <ul class="list">${
+       s.agenda.length
+         ? s.agenda.map((item) => `<li>${esc(typeof item === 'string' ? item : item.label ?? '')}</li>`).join('')
+         : '<li class="empty">Journée libre.</li>'
+     }</ul>
+     <p class="meta" style="margin:.8rem 0 .2rem">Recommandations</p>
+     <ul class="list">${
+       s.recommendations.length
+         ? s.recommendations.map((r) => `<li>${esc(r)}</li>`).join('')
+         : '<li class="empty">Rien à conseiller.</li>'
+     }</ul>`;
+}
+
+function renderQuality(state) {
+  const q = state.quality;
+  const b = q.balance;
+  $('quality').innerHTML =
+    gauge('Stabilité', q.stabilite) +
+    gauge('Fluidité', q.fluidite) +
+    gauge('Cohérence', q.coherence) +
+    // Sans rencontre jouée, le réalisme n'est pas mesurable : le moteur l'exclut
+    // du score global, la page le dit plutôt que d'afficher un zéro trompeur.
+    (b.matchesSampled > 0 ? gauge('Réalisme', q.realisme) : kv('Réalisme', 'non mesuré')) +
+    gauge('Immersion', q.immersion) +
+    gauge('Performances', q.performances) +
+    `<p class="meta" style="margin:.8rem 0 .2rem">Équilibrage du football — ${nf.format(b.matchesSampled)} rencontre(s) analysée(s)</p>` +
+    (b.matchesSampled > 0
+      ? kv('Buts par match', b.goalsPerMatch) +
+        kv('Victoires à domicile', pct(b.homeWinRate)) +
+        kv('Matchs nuls', pct(b.drawRate)) +
+        kv('Clean sheets', pct(b.cleanSheetRate))
+      : '') +
+    (b.recommendations.length
+      ? b.recommendations.map((r) => `<p class="meta">→ ${esc(r)}</p>`).join('')
+      : '<p class="meta">Équilibrage conforme aux cibles.</p>');
+}
+
+function renderSystems(state) {
+  $('systems-count').textContent = `${state.systems.length} systèmes`;
+  $('systems').innerHTML = state.systems
+    .map(
+      (s) =>
+        `<span class="tag ${s.enabled ? 'on' : 'off'}" title="Tomes ${esc(s.tomes.join(', '))}">${esc(s.name)}</span>`,
+    )
+    .join('');
+}
+
+function render(state) {
+  renderHeader(state);
+  renderCareer(state);
+  renderCity(state);
+  renderPress(state);
+  renderAlerts(state);
+  renderEconomy(state);
+  renderMatch(state);
+  renderPhone(state);
+  renderVenues(state);
+  renderSecretary(state);
+  renderQuality(state);
+  renderSystems(state);
+}
+
+/* ------------------------------------------------------------- transport */
+
+let refreshing = false;
+
+async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const response = await fetch('/api/state', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`état indisponible (${response.status})`);
+    render(await response.json());
+  } catch (error) {
+    $('clock').innerHTML = `<b style="color:var(--bad)">${esc(error.message)}</b>`;
+  } finally {
+    refreshing = false;
+  }
+}
+
+/** Désactive les commandes pendant qu'une action longue tourne. */
+async function withBusy(action) {
+  const buttons = document.querySelectorAll('button');
+  buttons.forEach((button) => (button.disabled = true));
+  try {
+    return await action();
+  } finally {
+    buttons.forEach((button) => (button.disabled = false));
+  }
+}
+
+function appendConsole(html) {
+  const node = $('console');
+  node.innerHTML += `\n${html}`;
+  node.scrollTop = node.scrollHeight;
+}
+
+for (const button of document.querySelectorAll('[data-days]')) {
+  button.addEventListener('click', () => {
+    const days = button.dataset.days;
+    void withBusy(async () => {
+      await fetch(`/api/advance?days=${days}`, { method: 'POST' });
+      flash(`${days} jour(s) simulé(s)`);
+      await refresh();
+    });
+  });
+}
+
+$('btn-match').addEventListener('click', () => {
+  void withBusy(async () => {
+    await fetch('/api/match', { method: 'POST' });
+    flash('Match joué');
+    await refresh();
+  });
+});
+
+$('btn-ceremony').addEventListener('click', () => {
+  void withBusy(async () => {
+    const response = await fetch('/api/ceremony', { method: 'POST' });
+    const ceremony = await response.json();
+    const lines = ceremony.results
+      .map((r) => `  ${r.category} → ${r.winner} (remis par ${r.presenter})`)
+      .join('\n');
+    appendConsole(
+      `<span class="cmd">Boubjack Awards ${esc(ceremony.season)} — ${esc(ceremony.city)}</span>\n` +
+        `${esc(ceremony.stage)}\n${esc(lines)}`,
+    );
+    flash(`Cérémonie ${ceremony.season} à ${ceremony.city}`);
+    await refresh();
+  });
+});
+
+function runCommand() {
+  const input = $('cmd');
+  const command = input.value.trim();
+  if (!command) return;
+  input.value = '';
+  void withBusy(async () => {
+    const response = await fetch(`/api/console?c=${encodeURIComponent(command)}`, { method: 'POST' });
+    const result = await response.json();
+    appendConsole(
+      `<span class="cmd">&gt; ${esc(command)}</span>\n` +
+        (result.ok ? esc(result.output) : `<span class="err">${esc(result.output)}</span>`),
+    );
+  });
+}
+
+$('btn-cmd').addEventListener('click', runCommand);
+$('cmd').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') runCommand();
+});
+
+void refresh();
+setInterval(() => void refresh(), 3000);
+</script>
+</body>
+</html>

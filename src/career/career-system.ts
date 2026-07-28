@@ -136,7 +136,7 @@ export class CareerSystem implements GameSystem {
     id: 'career',
     name: 'Carrière du joueur',
     order: 60,
-    tomes: ['IV', 'XXI', 'XXVI', 'XXVIII'],
+    tomes: ['III', 'IV', 'XXI', 'XXVI', 'XXVIII'],
   };
 
   private context!: SimulationContext;
@@ -160,6 +160,16 @@ export class CareerSystem implements GameSystem {
     this.economy = context.require<EconomySystem>(ECONOMY_SERVICE);
     this.seasons = context.require<SeasonSystem>(SEASON_SERVICE);
     context.provide(CAREER_SERVICE, this);
+
+    // Un titre décerné dans le monde ne devient un trophée du joueur que si
+    // c'est son club qui l'emporte (Tome IV, ch. 6).
+    context.events.on('competition.decided', (event) => {
+      if (!this.hasCareer || this.player.retired) return;
+      if (this.player.clubId !== event.championClubId) return;
+      const trophyId = `${event.competitionId}:${event.season}`;
+      if (this.trophies.some((trophy) => trophy.id === trophyId)) return;
+      this.awardTrophy(trophyId, event.trophyName, event.competitionId);
+    });
   }
 
   // ── Création & accès ─────────────────────────────────────────────────────

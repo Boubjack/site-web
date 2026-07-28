@@ -113,7 +113,7 @@ export class CommerceSystem implements GameSystem {
     id: 'commerce',
     name: 'Commerce & livraisons',
     order: 70,
-    tomes: ['XXII', 'XXIV', 'XXX'],
+    tomes: ['XXIV', 'XXVI', 'XXX'],
   };
 
   private context!: SimulationContext;

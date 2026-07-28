@@ -245,13 +245,17 @@ export class WorldSystem implements GameSystem {
   private updateWeather(city: CityRuntime, date: GameDate, phase: number): void {
     const country = getCountry(city.def.countryId);
     const latitudeFactor = Math.abs(city.geo.lat) / 90;
-    // Cycle saisonnier : décalé d'un semestre dans l'hémisphère sud.
+    // Cycle saisonnier : maximum en juillet dans l'hémisphère nord, inversé au
+    // sud. Le léger déphasage traduit l'inertie thermique (les mois les plus
+    // chauds arrivent après le solstice).
     const monthAngle = ((date.month - 1) / 12) * Math.PI * 2;
-    const seasonal = Math.cos(monthAngle - Math.PI / 6) * (country.hemisphere === 'south' ? -1 : 1);
+    const seasonal = -Math.cos(monthAngle - Math.PI / 6) * (country.hemisphere === 'south' ? -1 : 1);
     const dayCycle = Math.sin(((date.hour - 4) / 24) * Math.PI * 2);
 
-    const baseTemp = 30 - latitudeFactor * 42;
-    const seasonalSwing = 4 + latitudeFactor * 22;
+    // Moyenne annuelle décroissante avec la latitude, amplitude saisonnière
+    // croissante : un climat équatorial varie peu, un climat continental beaucoup.
+    const baseTemp = 27 - latitudeFactor * 32;
+    const seasonalSwing = 3 + latitudeFactor * 17;
     const noise = fbm1D(phase * 0.13 + city.geo.lon * 0.01, 3, city.id.length) * 2 - 1;
 
     const temperature =

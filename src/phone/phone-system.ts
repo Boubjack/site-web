@@ -15,17 +15,24 @@
  */
 
 import { clamp, clamp01, round } from '../core/math.js';
-import { dateFromAbsoluteMinutes, formatDateTimeFr, formatTimeFr } from '../core/clock.js';
+import {
+  MINUTES_PER_DAY,
+  dateFromAbsoluteMinutes,
+  formatDateTimeFr,
+  formatTimeFr,
+} from '../core/clock.js';
 import type { GameDate } from '../core/clock.js';
 import type { SimulationContext } from '../core/context.js';
 import type { GameSystem, SystemMetadata } from '../core/system.js';
 import { DialogueEngine } from '../ai/dialogue.js';
 import { NAME_POOLS } from '../data/names.js';
 import { getCity } from '../data/cities.js';
+import { getClub } from '../data/clubs.js';
 import type { ProductCategory } from '../data/brands.js';
 import { WORLD_SERVICE, type WorldSystem } from '../world/world-system.js';
 import { ECONOMY_SERVICE, type EconomySystem } from '../economy/economy-system.js';
 import { CAREER_SERVICE, type CareerSystem } from '../career/career-system.js';
+import { SEASON_SERVICE, type SeasonSystem } from '../career/season-system.js';
 import { COMMERCE_SERVICE, type CommerceSystem } from '../commerce/commerce-system.js';
 import { TRAVEL_SERVICE, type TravelSystem } from '../transport/travel-system.js';
 import { LIFE_SERVICE, type LifeSystem } from '../life/life-system.js';
@@ -103,6 +110,20 @@ export type PhoneContext =
   | 'rue'
   | 'vestiaire'
   | 'tribune';
+
+/**
+ * Transforme une phrase en hashtag lisible : ponctuation retirée, mots
+ * capitalisés et collés. « Titre — Coupe de France pour Paris » → #TitreCoupeDeFrance.
+ */
+function hashtagFrom(text: string): string {
+  const words = text
+    .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 1)
+    .slice(0, 4)
+    .map((word) => word.charAt(0).toLocaleUpperCase('fr-FR') + word.slice(1));
+  return `#${words.join('')}`;
+}
 
 const CONTEXT_ANIMATIONS: Record<PhoneContext, string> = {
   maison: 'phone.hold.relaxed',
@@ -244,6 +265,7 @@ export class PhoneSystem implements GameSystem {
   private readonly agenda: AgendaEntry[] = [];
   private readonly mailbox: MailItem[] = [];
   private readonly notes = new Map<string, Note>();
+  private seasons!: SeasonSystem;
   private weeklyTrends: string[] = [];
   private followers = 12_000;
   private counter = 0;
@@ -259,6 +281,7 @@ export class PhoneSystem implements GameSystem {
     this.audio = context.require<AudioSystem>(AUDIO_SERVICE);
     this.calendar = context.require<WorldCalendarSystem>(CALENDAR_SERVICE);
     this.career = context.optional<CareerSystem>(CAREER_SERVICE) ?? null;
+    this.seasons = context.require<SeasonSystem>(SEASON_SERVICE);
     context.provide(PHONE_SERVICE, this);
 
     this.syncContactsFromLife();
@@ -282,6 +305,8 @@ export class PhoneSystem implements GameSystem {
     context.events.on('career.trophyWon', (event) => {
       this.publish('trophée', `${event.trophyName} — saison ${event.season}`);
     });
+    // Les titres du reste du monde restent dans l'appli Actualités, alimentée
+    // par les alertes de la presse : le joueur ne publie que ses propres titres.
   }
 
   // ── État du téléphone ────────────────────────────────────────────────────
@@ -571,7 +596,10 @@ export class PhoneSystem implements GameSystem {
   /** Les tendances évoluent chaque semaine (Tome XI, ch. 3). */
   private refreshTrends(): void {
     const rng = this.context.stream('phone.trends');
-    const alerts = this.media.liveAlerts(6).map((a) => `#${a.text.split(' ').slice(0, 3).join('')}`);
+    const alerts = this.media
+      .liveAlerts(6)
+      .map((a) => hashtagFrom(a.text))
+      .filter((tag) => tag.length > 2);
     const evergreen = [
       '#MercatoDuJour',
       '#XIDeLaSemaine',
@@ -837,9 +865,17 @@ export class PhoneSystem implements GameSystem {
       hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
     const summary = this.economy.summary(30);
 
-    const agenda = this.upcomingAgenda.slice(0, 6).map(
-      (entry) => `${formatTimeFr(dateFromAbsoluteMinutes(entry.at))} — ${entry.title} (${entry.detail})`,
-    );
+    // L'heure seule suffit pour aujourd'hui ; au-delà, la date évite de lire
+    // « 02:00 » sans savoir de quel jour il s'agit.
+    const today = Math.floor(this.context.clock.absoluteMinutes / MINUTES_PER_DAY);
+    const agenda = this.upcomingAgenda.slice(0, 6).map((entry) => {
+      const entryDate = dateFromAbsoluteMinutes(entry.at);
+      const when =
+        Math.floor(entry.at / MINUTES_PER_DAY) === today
+          ? formatTimeFr(entryDate)
+          : formatDateTimeFr(entryDate);
+      return `${when} — ${entry.title} (${entry.detail})`;
+    });
     const orders = this.commerce.pendingOrders.map(
       (order) => `${order.id} : ${order.status}, livraison ${formatDateTimeFr(dateFromAbsoluteMinutes(order.expectedAt))}`,
     );
@@ -851,7 +887,7 @@ export class PhoneSystem implements GameSystem {
       .filter((r) => r.birthday.month === date.month && Math.abs(r.birthday.day - date.day) <= 3)
       .map((r) => `${r.name} — ${r.birthday.day}/${r.birthday.month}`);
 
-    const recommendations = this.investmentAdvice();
+    const recommendations = [...this.investmentAdvice(), ...this.careerAdvice()];
     const performance = this.career?.hasCareer
       ? `${this.career.statline()} — réputation ${Math.round(this.career.player.reputation)}/100, forme ${Math.round(this.career.player.form * 100)}%`
       : 'aucune carrière active';
@@ -890,6 +926,38 @@ export class PhoneSystem implements GameSystem {
     }
     if (this.economy.activeInvestments.length === 0 && liquidity > 500_000) {
       advice.push('Aucun investissement en cours : le portefeuille dort.');
+    }
+    return advice;
+  }
+
+  /**
+   * Conseils sportifs, fondés sur l'état réel du joueur : la secrétaire ne se
+   * limite pas au patrimoine (Tome VIII, ch. 5).
+   */
+  careerAdvice(): string[] {
+    const advice: string[] = [];
+    if (!this.career?.hasCareer) return advice;
+    const player = this.career.player;
+    if (player.retired) {
+      advice.push('Carrière terminée : votre agenda peut accueillir un rôle d’après-carrière.');
+      return advice;
+    }
+
+    if (player.fitness < 0.7) {
+      advice.push(`Condition physique à ${Math.round(player.fitness * 100)} % : allégez la charge cette semaine.`);
+    }
+    if (player.morale < 0.45) {
+      advice.push('Moral bas : un temps avec vos proches ou une victoire relanceraient la dynamique.');
+    }
+    if (player.form < 0.45) {
+      advice.push('Forme en baisse : privilégiez les séances techniques aux sollicitations médiatiques.');
+    }
+    const contract = this.career.currentContract;
+    if (contract && contract.expiresSeason - this.seasons.season <= 1) {
+      advice.push('Contrat à échéance proche : ouvrez les discussions avant le mercato.');
+    }
+    if (advice.length === 0) {
+      advice.push(`Tout est au vert : ${this.career.statline()}, continuez sur cette base.`);
     }
     return advice;
   }
@@ -1042,8 +1110,14 @@ export class PhoneSystem implements GameSystem {
 
   // ── Cycles ───────────────────────────────────────────────────────────────
 
-  onHour(context: SimulationContext, _date: GameDate): void {
-    this.battery = clamp01(this.battery - 0.012);
+  onHour(context: SimulationContext, date: GameDate): void {
+    // Le téléphone se branche pour la nuit là où il y a une prise, et se vide
+    // pendant la journée (Tome XI, ch. 1). Sans cela il restait à plat à vie.
+    const plugged =
+      this.phoneContext === 'maison' || this.phoneContext === 'hôtel' || this.phoneContext === 'voiture';
+    const night = date.hour >= 23 || date.hour < 7;
+    if (plugged && night) this.battery = clamp01(this.battery + 0.3);
+    else this.battery = clamp01(this.battery - 0.012);
 
     // Les streaks meurent après 24 h sans échange.
     const now = context.clock.absoluteMinutes;
@@ -1092,6 +1166,8 @@ export class PhoneSystem implements GameSystem {
       }
     }
 
+    this.scheduleFootballAgenda();
+
     // Rappel matinal de l'IA secrétaire.
     if (date.hour <= 9) {
       const briefing = this.secretaryBriefing();
@@ -1104,6 +1180,42 @@ export class PhoneSystem implements GameSystem {
         });
       }
     }
+  }
+
+  /**
+   * L'agenda de l'IA secrétaire suit le vrai calendrier sportif : rencontres à
+   * venir et séance de veille de match (Tome XI, ch. 6). Sans cela, l'agenda ne
+   * contenait que les commandes et les voyages, et restait vide la plupart du
+   * temps.
+   */
+  private scheduleFootballAgenda(): void {
+    if (!this.career?.hasCareer || this.career.player.retired) return;
+    const clubId = this.career.player.clubId;
+    if (!clubId) return;
+
+    for (const fixture of this.seasons.upcomingFor(clubId, 3)) {
+      const home = getClub(fixture.homeClubId).name;
+      const away = getClub(fixture.awayClubId).name;
+      const label = `${home} — ${away}`;
+      // Le crochet quotidien repasse sur les mêmes rencontres : on ne réinscrit
+      // pas ce qui est déjà à l'agenda.
+      this.addAgendaEntryOnce('match', label, 'rencontre officielle', fixture.kickoff);
+      // Mise en place tactique la veille à 10 h, pas à une heure arbitraire.
+      const eveOfMatch =
+        (Math.floor(fixture.kickoff / MINUTES_PER_DAY) - 1) * MINUTES_PER_DAY + 10 * 60;
+      this.addAgendaEntryOnce('entraînement', 'Séance de veille de match', `préparation de ${label}`, eveOfMatch);
+    }
+  }
+
+  /** Ajoute une entrée d'agenda sauf si la même figure déjà au même horaire. */
+  private addAgendaEntryOnce(
+    kind: AgendaEntry['kind'],
+    title: string,
+    detail: string,
+    at: number,
+  ): void {
+    if (this.agenda.some((entry) => entry.at === at && entry.title === title && entry.kind === kind)) return;
+    this.addAgendaEntry(kind, title, detail, at);
   }
 
   onWeek(_context: SimulationContext, _date: GameDate): void {

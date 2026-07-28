@@ -225,6 +225,15 @@ export class LegacySystem implements GameSystem {
         this.addArchive('finale', `Finale — ${event.trophyName}`, ['trophée', event.competitionId]);
         this.addAlbumEntry(`Soulèvement du trophée ${event.trophyName}`, ['trophée', 'célébration']);
         break;
+      // Les palmarès du monde entrent aux archives, jamais dans le musée du
+      // joueur : seul ce qu'il a gagné lui-même y est exposé (Tome XXV, ch. 2).
+      case 'competition.decided':
+        this.addArchive(
+          'finale',
+          `${event.competitionName} ${event.season} — ${event.championName} champion`,
+          ['palmarès', event.competitionId],
+        );
+        break;
       case 'awards.won':
         if (this.career?.hasCareer && event.winnerId === this.career.player.identity.id) {
           this.addTimeline('récompense', event.categoryName, `Boubjack Awards ${event.season} — ${event.hostCityId}`);

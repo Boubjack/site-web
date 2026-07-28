@@ -116,7 +116,7 @@ export class LifeSystem implements GameSystem {
     id: 'life',
     name: 'Vie personnelle',
     order: 75,
-    tomes: ['XI', 'XVI', 'XX', 'XXVI', 'XXX', 'XXXI'],
+    tomes: ['XI', 'XX', 'XXI', 'XXVI', 'XXX', 'XXXI'],
   };
 
   private context!: SimulationContext;

@@ -78,6 +78,8 @@ export interface PerformanceTargets {
 }
 
 export interface BalanceReport {
+  /** Nombre de rencontres analysées : 0 = mesure non disponible. */
+  readonly matchesSampled: number;
   readonly goalsPerMatch: number;
   readonly homeWinRate: number;
   readonly drawRate: number;
@@ -491,13 +493,34 @@ export class QualitySystem implements GameSystem {
     const coherence = clamp01(1 - issues.filter((i) => i.severity === 'erreur').length * 0.1 - issues.length * 0.01);
 
     const balance = this.balanceReport();
-    // Un football crédible tourne autour de 2,6 buts par match.
-    const realisme = clamp01(1 - Math.abs(balance.goalsPerMatch - 2.6) / 2.6);
+    // Un football crédible tourne autour de 2,6 buts par match. Tant qu'aucune
+    // rencontre n'a été jouée, l'axe n'est pas mesurable : il est alors exclu
+    // du score global au lieu d'être compté comme un échec.
+    const realismeMesure = balance.matchesSampled > 0;
+    const realisme = realismeMesure
+      ? clamp01(1 - Math.abs(balance.goalsPerMatch - 2.6) / 2.6)
+      : 0;
 
+    // Densité de vie du monde. Trois signaux bornés, moyennés : des habitants,
+    // de l'animation dans les rues, et des lieux réellement fréquentés. La
+    // mesure précédente plafonnait structurellement autour de 0,6 même pour un
+    // monde parfaitement vivant : elle notait la population, pas l'immersion.
     let liveness = 0;
     const cities = this.world.cities();
     for (const city of cities) {
-      liveness += city.activeStreetEvents.length * 0.05 + Math.min(1, city.npcCount / 40) * 0.5;
+      const population = Math.min(1, city.npcCount / 25);
+      const street = Math.min(1, city.activeStreetEvents.length + city.decorations.length);
+      let open = 0;
+      let occupied = 0;
+      for (const venue of city.venues.values()) {
+        if (!venue.open) continue;
+        open++;
+        if (venue.occupancy > 0) occupied++;
+      }
+      const frequentation = open > 0 ? occupied / open : 0;
+      // L'animation de rue est un bonus, pas un tiers de la note : un mardi
+      // calme dans une ville peuplée et fréquentée reste immersif.
+      liveness += ((population + frequentation) / 2) * 0.85 + street * 0.15;
     }
     const immersion = clamp01(cities.length > 0 ? liveness / cities.length : 0);
 
@@ -511,15 +534,15 @@ export class QualitySystem implements GameSystem {
       ),
     );
 
-    const global = round(
-      (stabilite * 0.25 +
-        fluidite * 0.15 +
-        coherence * 0.2 +
-        realisme * 0.15 +
-        immersion * 0.15 +
-        performances * 0.1),
-      3,
-    );
+    const weighted =
+      stabilite * 0.25 +
+      fluidite * 0.15 +
+      coherence * 0.2 +
+      immersion * 0.15 +
+      performances * 0.1 +
+      (realismeMesure ? realisme * 0.15 : 0);
+    const totalWeight = realismeMesure ? 1 : 0.85;
+    const global = round(weighted / totalWeight, 3);
 
     void warnings;
     return {
@@ -599,7 +622,7 @@ export class QualitySystem implements GameSystem {
       }
     }
 
-    return { goalsPerMatch, homeWinRate, drawRate, cleanSheetRate, recommendations };
+    return { matchesSampled: matches, goalsPerMatch, homeWinRate, drawRate, cleanSheetRate, recommendations };
   }
 
   // ── Retours communautaires (Tome XV, ch. 6) ──────────────────────────────

@@ -65,6 +65,8 @@ export interface Article {
   readonly subjectIds: readonly string[];
   /** Tonalité -1 (à charge) .. +1 (élogieuse). */
   readonly tone: number;
+  /** Fait brut traité, avant l'angle du média : sert à varier la une. */
+  readonly storyKey: string;
 }
 
 export interface TvShow {
@@ -248,8 +250,19 @@ export class MediaSystem implements GameSystem {
     });
 
     context.events.on('career.trophyWon', (event) => {
-      this.queueStory(`${event.trophyName} remporté`, 'historic', [event.playerId], 1);
-      this.pushAlert(`Titre — ${event.trophyName}`, 'historic');
+      const winner = this.playerName();
+      this.queueStory(`${event.trophyName} : ${winner} soulève le trophée`, 'historic', [event.playerId], 1);
+      this.pushAlert(`Titre — ${event.trophyName} pour ${winner}`, 'historic');
+    });
+
+    context.events.on('competition.decided', (event) => {
+      this.queueStory(
+        `${event.competitionName} : ${event.championName} champion`,
+        'notable',
+        [event.championClubId],
+        0.5,
+      );
+      this.pushAlert(`${event.trophyName} — ${event.championName} sacré`, 'major');
     });
 
     context.events.on('awards.won', (event) => {
@@ -430,6 +443,7 @@ export class MediaSystem implements GameSystem {
       publishedAt: this.context.clock.absoluteMinutes,
       subjectIds: story.subjects,
       tone,
+      storyKey: story.headline,
     };
   }
 
@@ -583,17 +597,38 @@ export class MediaSystem implements GameSystem {
   // ── Consultation ─────────────────────────────────────────────────────────
 
   /** Une du jour, triée par importance puis par audience du média. */
+  /**
+   * La une du jour : d'abord l'importance et la fraîcheur, ensuite l'audience.
+   * Un même média et un même titre n'occupent qu'une place tant qu'il reste
+   * d'autres sujets — sinon la rédaction la plus puissante monopolisait la une.
+   */
   frontPage(limit = 8): Article[] {
     const order: Record<Significance, number> = { historic: 3, major: 2, notable: 1, routine: 0 };
-    return [...this.articles]
-      .sort((a, b) => {
-        const bySignificance = order[b.significance] - order[a.significance];
-        if (bySignificance !== 0) return bySignificance;
-        const reachA = this.outlets.get(a.outletId)?.reach ?? 0;
-        const reachB = this.outlets.get(b.outletId)?.reach ?? 0;
-        return reachB - reachA || b.publishedAt - a.publishedAt;
-      })
-      .slice(0, limit);
+    const ranked = [...this.articles].sort((a, b) => {
+      const bySignificance = order[b.significance] - order[a.significance];
+      if (bySignificance !== 0) return bySignificance;
+      const byDate = b.publishedAt - a.publishedAt;
+      if (byDate !== 0) return byDate;
+      return (this.outlets.get(b.outletId)?.reach ?? 0) - (this.outlets.get(a.outletId)?.reach ?? 0);
+    });
+
+    const page: Article[] = [];
+    const usedOutlets = new Set<string>();
+    const usedStories = new Set<string>();
+    for (const article of ranked) {
+      if (page.length >= limit) break;
+      if (usedOutlets.has(article.outletId) || usedStories.has(article.storyKey)) continue;
+      page.push(article);
+      usedOutlets.add(article.outletId);
+      usedStories.add(article.storyKey);
+    }
+    // Pas assez de sujets distincts : on complète avec le reste du classement.
+    for (const article of ranked) {
+      if (page.length >= limit) break;
+      if (page.includes(article)) continue;
+      page.push(article);
+    }
+    return page;
   }
 
   latestArticles(limit = 20): Article[] {
@@ -713,7 +748,11 @@ export class MediaSystem implements GameSystem {
       });
     }
     this.articles.length = 0;
-    this.articles.push(...(((state.articles as Article[]) ?? [])));
+    // Les sauvegardes antérieures ne portent pas de storyKey : on le reconstruit
+    // depuis le titre pour que la une reste variée après un chargement.
+    for (const article of (state.articles as Article[]) ?? []) {
+      this.articles.push(article.storyKey ? article : { ...article, storyKey: article.headline });
+    }
     this.alerts.length = 0;
     this.alerts.push(...(((state.alerts as typeof this.alerts) ?? [])));
     for (const podcast of (state.podcasts as Podcast[]) ?? []) this.podcasts.set(podcast.id, podcast);

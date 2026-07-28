@@ -115,7 +115,7 @@ export class TravelSystem implements GameSystem {
     id: 'travel',
     name: 'Voyages & transports',
     order: 65,
-    tomes: ['XVI', 'XXX'],
+    tomes: ['II', 'XVI', 'XXX'],
   };
 
   private context!: SimulationContext;

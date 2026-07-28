@@ -38,11 +38,13 @@
 
       <section class="notice" style="margin-bottom: 2rem;">
         <strong>Ce que contient ce dépôt.</strong>
-        Deux choses distinctes, et il est important de ne pas les confondre.
-        D'une part le <a href="gdd.html">Game Design Document complet</a> — l'intégralité des tomes transmis,
-        sans résumé ni coupe. D'autre part un <a href="sim.html">prototype réellement jouable</a> qui implémente
-        la couche simulation du projet : économie, carrière, monde vivant, IA de match, médias, cérémonies et sauvegardes.
-        Le rendu 3D, les animations, l'audio spatial et le multijoueur temps réel relèvent d'une production moteur
+        Trois choses distinctes, et il est important de ne pas les confondre.
+        D'abord le <a href="gdd.html">Game Design Document complet</a> — l'intégralité des tomes transmis,
+        sans résumé ni coupe. Ensuite un <a href="sim.html">prototype jouable dans le navigateur</a>, sans
+        installation ni compilation. Enfin le <strong>moteur de simulation complet</strong> écrit en TypeScript
+        dans <code>src/</code> : 21 systèmes, ~27 400 lignes, 35 tests, zéro dépendance — c'est la couche que
+        l'on brancherait sur Unreal ou Unity.
+        Le rendu 3D, les maillages, l'audio échantillonné et le réseau temps réel relèvent d'une production moteur
         et ne sont pas dans ce dépôt : la <a href="traceability.html">matrice de traçabilité</a> dit précisément,
         chapitre par chapitre, ce qui tourne et ce qui n'y est pas.
       </section>
@@ -60,7 +62,8 @@
           <div class="card card-hover feature-card">
             <span class="icon">🌍</span>
             <h4>Monde ouvert vivant</h4>
-            <p>20 pays, 20 villes, plus de 200 lieux visitables. Les PNJ changent d'emploi, déménagent, vieillissent.
+            <p>20 pays et 20 villes dans le prototype navigateur ; 36 pays, 64 villes et plus de 20 000 lieux
+              générés dans le moteur complet. Les PNJ changent d'emploi, déménagent, vieillissent.
               Des commerces ouvrent et ferment. Le monde évolue même quand vous ne jouez pas.</p>
           </div>
           <div class="card card-hover feature-card">
@@ -96,40 +99,63 @@
           <div class="card">
             <div class="card-title">Principes</div>
             <ul class="muted small">
-              <li><strong>Modulaire</strong> — dix systèmes indépendants qui ne communiquent que par un bus d'événements. Aucun système n'importe un autre système.</li>
-              <li><strong>Déterministe</strong> — une graine reproduit exactement le même monde. Indispensable pour rejouer un bug.</li>
+              <li><strong>Modulaire</strong> — 21 systèmes indépendants qui ne communiquent que par un bus d'événements typé. Aucun système n'importe un autre système.</li>
+              <li><strong>Déterministe</strong> — une graine reproduit exactement le même monde, jusqu'aux titres décernés. Chaque système tire dans son propre flux nommé.</li>
               <li><strong>Extensible</strong> — ajouter une ville, un club ou un véhicule est une simple donnée, sans modification de code.</li>
-              <li><strong>Compatible</strong> — les sauvegardes anciennes sont migrées, jamais cassées.</li>
-              <li><strong>Sans dépendance</strong> — modules ES natifs, aucun framework, aucune étape de compilation.</li>
+              <li><strong>Compatible</strong> — sauvegardes versionnées, chaîne de migrations, somme de contrôle : les anciennes parties sont migrées, jamais cassées.</li>
+              <li><strong>Sans dépendance</strong> — aucun paquet d'exécution, ni dans le moteur TypeScript ni dans le prototype navigateur.</li>
             </ul>
           </div>
           <div class="card">
             <div class="card-title">Structure du code</div>
-            <pre class="mono xs muted" style="overflow-x:auto; margin:0;">js/
-├── core/       horloge, RNG, état, sauvegarde, bus
-├── data/       monde, GDD, matrice de traçabilité
-├── systems/    météo, économie, match, calendrier,
-│               carrière, réputation, médias,
-│               récompenses, monde, téléphone
-├── ui/         coque, écrans, cérémonie, DOM
-└── game.js     orchestrateur
+            <pre class="mono xs muted" style="overflow-x:auto; margin:0;">src/            moteur complet (TypeScript)
+├── core/       horloge, RNG, bus, contexte,
+│               ordonnanceur, sauvegarde, profileur
+├── data/       pays, villes, clubs, stades, marques
+├── world/      génération, lieux, navigation
+├── ai/         mémoire, personnalités, dialogue, PNJ
+├── football/   moteur de match, tactiques, arbitre,
+│               modes Entraîneur et Président
+├── career/ economy/ media/ legacy/ phone/ …
+└── devtools/   qualité, console, headless, serveur web
 
-tests/run.js    74 tests, navigateur et Node</pre>
+js/             prototype navigateur (JavaScript)
+tests/          35 tests moteur + 75 tests prototype</pre>
           </div>
+        </div>
+      </section>
+
+      <section style="margin-bottom: 3rem;">
+        <h2>Le tableau de bord du monde vivant</h2>
+        <div class="card">
+          <p class="muted">
+            <code>npm run web</code> démarre un monde unique côté serveur qui <strong>avance en continu</strong>,
+            que quelqu'un regarde la page ou non — 20 minutes de jeu par seconde réelle. Le tableau de bord
+            affiche en direct la carrière, la ville et sa météo, la une de la presse, le patrimoine, le dernier
+            match avec sa carte de chaleur et ses commentaires, le smartphone, les habitants alentour, les scores
+            de qualité et la console développeur.
+          </p>
         </div>
       </section>
 
       <section style="margin-bottom: 3rem;">
         <h2>Démarrer</h2>
         <div class="card">
-          <p class="muted">Le projet n'a aucune dépendance. Un serveur statique suffit — les modules ES exigent
-            le protocole HTTP, ouvrir le fichier directement ne fonctionnera pas.</p>
-          <pre class="mono small" style="background: var(--bg-panel); padding: 1rem; border-radius: 10px; overflow-x: auto;"># Servir le site
-python3 -m http.server 8000
-# puis ouvrir http://localhost:8000
+          <p class="muted">Aucune dépendance d'exécution. Le prototype navigateur tourne derrière n'importe quel
+            serveur statique — les modules ES exigent le protocole HTTP, ouvrir le fichier directement ne
+            fonctionnera pas. Le moteur TypeScript demande Node 20 ou plus récent.</p>
+          <pre class="mono small" style="background: var(--bg-panel); padding: 1rem; border-radius: 10px; overflow-x: auto;"># Prototype navigateur
+python3 -m http.server 8000        # puis http://localhost:8000
+node tests/run.js                  # 75 tests
 
-# Lancer la suite de tests
-node tests/run.js</pre>
+# Moteur de simulation complet
+npm install
+npm test                           # 35 tests
+npm run simulate                   # une démonstration headless
+npm run web                        # tableau de bord sur http://localhost:8080</pre>
+          <p class="muted small" style="margin-bottom:0;">
+            Documentation technique : <code>docs/architecture.md</code> et <code>docs/tomes.md</code>.
+          </p>
         </div>
       </section>
     </main>

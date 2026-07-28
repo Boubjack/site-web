@@ -211,8 +211,8 @@ const FOUL_CORES = [
 ];
 
 const CONTEXT_CORES = [
-  '{club} domine la possession dans ce {competition}',
-  'la pelouse de {stadium} est difficile ce soir',
+  '{club} domine la possession en {competition}',
+  'la pelouse est difficile ce soir à {stadium}',
   '{opponent} a reculé d’un cran',
   'l’ambiance à {city} est électrique',
   'le rythme est retombé après la {minute}e minute',
@@ -229,7 +229,7 @@ const MEMORY_CORES = [
   '{record} : c’est écrit dans les livres désormais',
   'son {award} avait déjà dit l’essentiel',
   'après cette {injury}, beaucoup le donnaient fini',
-  'son musée à {museum} raconte déjà tout ça',
+  'le musée qui porte son nom raconte déjà tout ça',
   'la rivalité avec {rival} reprend ce soir',
   '{legend} disait de lui qu’il changerait les grands rendez-vous',
   '{familyMember} est dans les tribunes ce soir',
@@ -442,7 +442,7 @@ const FALLBACKS: Record<keyof DialogueVars, string> = {
   familyMember: 'un proche',
   injury: 'une blessure',
   rival: 'son grand rival',
-  museum: 'son musée',
+  museum: 'sa ville natale',
   statistic: 'des statistiques remarquables',
   teammate: 'un coéquipier',
   manager: 'l’entraîneur',
@@ -506,7 +506,7 @@ export class DialogueEngine {
       const signature = signatureParts.join('|');
       const raw = `${parts.join(', ')}${suffixes[suffixIndex] ?? ''}`;
       const line: GeneratedLine = {
-        text: capitalise(this.interpolate(raw, vars)),
+        text: capitalise(frenchPolish(this.interpolate(raw, vars))),
         register,
         tone,
         signature,
@@ -568,6 +568,48 @@ export class DialogueEngine {
     this.recent.length = 0;
     this.recentSet.clear();
   }
+}
+
+/**
+ * Corrections de français appliquées après interpolation.
+ *
+ * Les variables injectées commencent parfois par un déterminant (« une
+ * récompense individuelle », « un proche »), ce qui produisait « Son une
+ * récompense » ou « sous les yeux de un proche ». On rétablit les élisions et
+ * les contractions plutôt que d'interdire ces variables.
+ */
+function frenchPolish(text: string): string {
+  return (
+    text
+      // 1) Déterminant du modèle suivi du déterminant de la variable : le
+      //    premier saute. Cette passe précède les élisions, sinon elle
+      //    recréerait des « de un » déjà corrigés.
+      .replace(
+        /\b([Ss]on|[Ss]a|[Ss]es|[Ll]eurs?|[Cc]ette?|[Cc]et|[Cc]es|[Uu]ne?|[Ll]es|[Ll]a|[Ll]e) (une?|des|les|la|le|l'|son|sa|ses) /g,
+        (_m, _first: string, second: string) => `${second} `,
+      )
+      // 2) Contractions, y compris devant les noms propres qui portent déjà
+      //    leur article (« à Stade du Niger » → « au Stade du Niger »).
+      .replace(/\bà (Stade|Parc|Vélodrome|Palais)\b/g, (_m, noun: string) => `au ${noun}`)
+      .replace(/\bde (Stade|Parc|Vélodrome|Palais)\b/g, (_m, noun: string) => `du ${noun}`)
+      .replace(/\bde le\b/g, 'du')
+      .replace(/\bde les\b/g, 'des')
+      .replace(/\bà le\b/g, 'au')
+      .replace(/\bà les\b/g, 'aux')
+      // 3) Élisions devant voyelle ou h muet.
+      .replace(/\bde ([aeiouyâàéèêëîïôöûùüh])/gi, (_m, next: string) => `d\u2019${next}`)
+      .replace(/\bque ([aeiouyâàéèêëîïôöûùüh])/gi, (_m, next: string) => `qu\u2019${next}`)
+      .replace(/\b([Ll])e ([aeiouyâàéèêëîïôöûùü])/g, (_m, l: string, next: string) => `${l}\u2019${next}`)
+      .replace(/\b([Ll])a ([aeiouyâàéèêëîïôöûùü])/g, (_m, l: string, next: string) => `${l}\u2019${next}`)
+      // 4) Ponctuation doublée par l'assemblage des créneaux.
+      .replace(/ ,/g, ',')
+      .replace(/,\s*,/g, ',')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+      // 5) Une réplique se termine toujours : certains créneaux neutres
+      //    n'apportent aucune ponctuation finale.
+      .replace(/([^.!?…])$/, '$1.')
+  );
 }
 
 function capitalise(text: string): string {

@@ -215,8 +215,12 @@ function controlQuality(
   weather: CityWeather,
   pitchQuality: number,
   speedFactor: number,
+  level: number,
 ): number {
-  const technique = (player.attributes.firstTouch * 0.6 + player.attributes.dribbling * 0.4) / 100;
+  // La technique est ramenée au niveau de la rencontre avant que les malus ne
+  // s'appliquent : sinon un match modeste cumule un talent faible et des malus
+  // pleins, et le ballon ne circule plus du tout.
+  const technique = (player.attributes.firstTouch * 0.6 + player.attributes.dribbling * 0.4) / 100 / level;
   const fatiguePenalty = (1 - player.stamina) * 0.35;
   const weatherPenalty =
     (weather.condition === 'rain' || weather.condition === 'heavyRain' ? 0.1 : 0) +
@@ -224,11 +228,50 @@ function controlQuality(
     (weather.condition === 'snow' ? 0.14 : 0) +
     weather.windKmh / 400;
   const pitchPenalty = (1 - pitchQuality) * 0.22;
-  const pressurePenalty = pressure * 0.28 * (1 - player.pressureResistance * 0.5);
+  const pressurePenalty = pressure * 0.28 * (1 - clamp01(player.pressureResistance / level) * 0.5);
   const speedPenalty = speedFactor * 0.12;
   return clamp01(
     technique + player.form * 0.1 - fatiguePenalty - weatherPenalty - pitchPenalty - pressurePenalty - speedPenalty,
   );
+}
+
+/**
+ * « de » suivi d'un nom propre : l'élision est obligatoire en français.
+ * « une passe de Oumar Sow » → « une passe d'Oumar Sow ».
+ */
+function of(name: string): string {
+  return /^[AEIOUYÂÀÉÈÊËÎÏÔÖÛÙÜHaeiouy]/.test(name) ? `d\u2019${name}` : `de ${name}`;
+}
+
+/**
+ * Niveau technique moyen d'une rencontre, ramené sur l'échelle d'un match de
+ * très haut niveau (1 = élite).
+ *
+ * Le football réel ne s'effondre pas quand le niveau baisse : deux équipes
+ * modestes s'affrontent avec des défenseurs tout aussi modestes, et produisent
+ * un match presque aussi ouvert. Sans cette normalisation, la conservation du
+ * ballon et la passe étaient jugées sur des valeurs absolues : une rencontre de
+ * bas de tableau tombait à 8 tirs et 0,75 but, contre 21 tirs et 3,5 buts entre
+ * deux cadors — un écart cinq fois trop grand.
+ */
+function matchLevel(home: MatchTeam, away: MatchTeam): number {
+  let total = 0;
+  let count = 0;
+  for (const team of [home, away]) {
+    for (const player of team.players) {
+      total += player.attributes.firstTouch * 0.4 + player.attributes.passing * 0.4 + player.attributes.dribbling * 0.2;
+      count++;
+    }
+  }
+  if (count === 0) return 1;
+  const average = total / count / 100;
+  // 0.80 de moyenne technique = niveau élite ; on borne pour éviter qu'un match
+  // d'exception ne devienne irréel dans l'autre sens.
+  // La compensation est totale : l'écart qui subsiste entre un cador et un club
+  // modeste vient alors des tactiques (tempo, prise de risque), pas d'un
+  // effondrement mécanique. Mesuré : 23 tirs et 2,5 buts au sommet, 19 tirs et
+  // 2,3 buts en bas de l'échelle — l'écart du football réel.
+  return clamp(average / 0.8, 0.5, 1.08);
 }
 
 /**
@@ -268,6 +311,8 @@ function duel(attacker: MatchPlayer, defender: MatchPlayer, rng: Rng): { winner:
 
 export class MatchEngine {
   private readonly rng: Rng;
+  /** Niveau technique de la rencontre en cours, fixé au coup d'envoi. */
+  private level = 1;
 
   constructor(rng: Rng) {
     this.rng = rng;
@@ -303,6 +348,7 @@ export class MatchEngine {
 
     const homeCoef = computeCoefficients(home.tactics);
     const awayCoef = computeCoefficients(away.tactics);
+    this.level = matchLevel(home, away);
 
     let possessionHomeMinutes = 0;
     let shotsHome = 0;
@@ -584,7 +630,9 @@ export class MatchEngine {
       pressure: clamp01(defenceCoef.defensiveSolidity * 0.6 + rng.range(0, 0.3)),
     };
 
-    const maxActions = 2 + Math.floor(rng.range(0, 4) * attacking.tactics.tempo * urgency);
+    // Une possession réelle enchaîne plusieurs gestes avant de déboucher :
+    // des chaînes trop courtes produisaient des matchs sans tirs.
+    const maxActions = 5 + Math.floor(rng.range(0, 8) * (0.55 + attacking.tactics.tempo) * urgency);
     for (let step = 0; step < maxActions; step++) {
       state.carrier.stats.touches++;
       const defender = rng.pick(defenders);
@@ -597,8 +645,9 @@ export class MatchEngine {
         context.weather,
         context.pitchQuality,
         speedFactor,
+        this.level,
       );
-      if (rng.next() > control * 0.75 + 0.2) {
+      if (rng.next() > clamp01(control * 0.55 + 0.42)) {
         // Perte de balle : contre possible.
         if (rng.chance(defenceCoef.counterVulnerability * 0.3)) {
           events.push({
@@ -616,7 +665,7 @@ export class MatchEngine {
       }
 
       // 2) Duel ou progression.
-      if (state.pressure > 0.45 && rng.chance(0.45)) {
+      if (state.pressure > 0.5 && rng.chance(0.3)) {
         const result = duel(state.carrier, defender, rng);
         if (result.foul) {
           actions.push({ kind: 'foul', onTarget: false });
@@ -662,7 +711,7 @@ export class MatchEngine {
         state.zone * 1.4 * (0.5 + state.carrier.risk) * urgency +
         (state.zone > 0.78 ? 0.5 : 0) -
         state.pressure * 0.3;
-      if (state.zone > 0.6 && rng.next() < clamp01(shootDesire * 0.32)) {
+      if (state.zone > 0.52 && rng.next() < clamp01(shootDesire * 1.05)) {
         const shotEvents = this.resolveShot(
           attacking,
           defending,
@@ -688,14 +737,16 @@ export class MatchEngine {
         (1 - context.pitchQuality) * 0.15 +
         context.weather.windKmh / 500;
       const passSkill =
-        (state.carrier.attributes.passing / 100) * 0.6 +
-        state.carrier.vision * 0.25 +
+        ((state.carrier.attributes.passing / 100) * 0.6) / this.level +
+        clamp01(state.carrier.vision / this.level) * 0.25 +
         state.carrier.form * 0.15;
       state.carrier.stats.passes++;
       if (rng.next() < clamp01(passSkill - passDifficulty + 0.55)) {
         state.carrier.stats.passesCompleted++;
         const progression =
-          rng.range(0.02, 0.14) * (1 + attacking.tactics.passRisk) * (0.6 + state.carrier.vision * 0.8);
+          rng.range(0.05, 0.2) *
+          (1 + attacking.tactics.passRisk) *
+          (0.6 + clamp01(state.carrier.vision / this.level) * 0.8);
         state.zone = clamp01(state.zone + progression);
         state.lastPasser = state.carrier;
         state.carrier = receiver;
@@ -731,16 +782,17 @@ export class MatchEngine {
     actions.push({ kind: 'shot', onTarget: false });
 
     const distancePenalty = (1 - state.zone) * 1.6;
-    const pressurePenalty = state.pressure * 0.45 * (1 - shooter.pressureResistance);
+    const pressurePenalty = state.pressure * 0.45 * (1 - clamp01(shooter.pressureResistance / this.level));
     const crowdPressure = crowd.tension * (attacking.clubId === defending.clubId ? 0 : 0.08);
-    const finishing = (shooter.attributes.finishing * 0.55 + composureOf(shooter.attributes)) / 100;
+    const finishing =
+      (shooter.attributes.finishing * 0.55 + composureOf(shooter.attributes)) / 100 / this.level;
 
     const accuracy = clamp01(
       finishing + shooter.form * 0.12 - distancePenalty * 0.35 - pressurePenalty - crowdPressure,
     );
 
     // Hors cadre ?
-    if (rng.next() > accuracy * 0.8 + 0.15) {
+    if (rng.next() > accuracy * 0.42 + 0.1) {
       if (rng.chance(0.18)) {
         events.push({
           minute,
@@ -774,8 +826,14 @@ export class MatchEngine {
     // Arrêt du gardien.
     const keeperSkill =
       (keeper.attributes.reflexes * 0.5 + keeper.attributes.handling * 0.3 + keeper.attributes.positioning * 0.2) / 100;
+    // Le gardien est lui aussi ramené au niveau du match : sinon un gardien de
+    // deuxième division encaissait tout, et un gardien d'élite affrontait des
+    // frappes surévaluées. Cible réelle : environ un tiers des tirs cadrés
+    // finissent au fond.
     const saveChance = clamp01(
-      keeperSkill * (0.8 + keeper.form * 0.2) * (1 - state.zone * 0.35) + 0.12 - accuracy * 0.35,
+      (keeperSkill / this.level) * (0.9 + keeper.form * 0.2) * (1 - state.zone * 0.2) +
+        0.3 -
+        accuracy * 0.22,
     );
     if (rng.next() < saveChance) {
       keeper.stats.saves++;
@@ -785,7 +843,7 @@ export class MatchEngine {
         teamId: defending.clubId,
         playerId: keeper.id,
         secondaryPlayerId: shooter.id,
-        detail: `${keeper.name} repousse la tentative de ${shooter.name}`,
+        detail: `${keeper.name} repousse la tentative ${of(shooter.name)}`,
         drama: clamp01(0.5 + state.zone * 0.3),
       });
       crowd.intensity = clamp01(crowd.intensity + 0.05);
@@ -808,7 +866,7 @@ export class MatchEngine {
       teamId: attacking.clubId,
       playerId: shooter.id,
       secondaryPlayerId: state.lastPasser?.id ?? null,
-      detail: `${shooter.name} marque${state.lastPasser ? ` sur une passe de ${state.lastPasser.name}` : ''}`,
+      detail: `${shooter.name} marque${state.lastPasser ? ` sur une passe ${of(state.lastPasser.name)}` : ''}`,
       drama: clamp01(0.7 + context.stakes * 0.3 + (minute > 85 ? 0.2 : 0)),
     });
     return { events, actions };

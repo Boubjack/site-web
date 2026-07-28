@@ -255,6 +255,23 @@ export interface TrophyWonEvent extends BaseEvent {
   readonly season: number;
 }
 
+/**
+ * Un titre décerné dans le monde, indépendamment du joueur.
+ *
+ * Distinct de `career.trophyWon`, qui n'appartient qu'au joueur : sans cette
+ * séparation, le musée et l'héritage (Tome XXV) absorberaient les 45 titres
+ * décernés chaque saison sur la planète.
+ */
+export interface CompetitionDecidedEvent extends BaseEvent {
+  readonly type: 'competition.decided';
+  readonly competitionId: string;
+  readonly competitionName: string;
+  readonly trophyName: string;
+  readonly championClubId: string;
+  readonly championName: string;
+  readonly season: number;
+}
+
 export interface AwardWonEvent extends BaseEvent {
   readonly type: 'awards.won';
   readonly ceremonyId: string;
@@ -523,6 +540,7 @@ export interface GameEventMap {
   'career.contractSigned': ContractSignedEvent;
   'career.reputationChanged': ReputationChangedEvent;
   'career.trophyWon': TrophyWonEvent;
+  'competition.decided': CompetitionDecidedEvent;
   'career.retired': RetirementEvent;
   'awards.won': AwardWonEvent;
   'awards.stage': CeremonyStageEvent;

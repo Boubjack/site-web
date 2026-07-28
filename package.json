@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "test": "npm run build && node --test dist/tests/",
+    "test": "npm run build && node --test \"dist/tests/*.test.js\"",
     "simulate": "npm run build && node dist/src/devtools/headless-runner.js",
     "web": "npm run build && node dist/src/devtools/web-server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"

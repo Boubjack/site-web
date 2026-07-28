@@ -561,6 +561,18 @@ export class EconomySystem implements GameSystem {
   buyCollectible(product: ProductDef | { id: string; name: string; priceEur: number; appreciates: boolean }): Collectible | null {
     const price = product.priceEur;
     if (!this.canAfford(price, 'courant')) return null;
+    this.record('courant', -price, 'luxe', `achat — ${product.name}`);
+    return this.registerCollectible(product);
+  }
+
+  /**
+   * Inscrit un objet de collection déjà payé (commande livrée, cadeau, gain).
+   * Sépare la comptabilité de la détention d'actif : aucun double débit.
+   */
+  registerCollectible(
+    product: ProductDef | { id: string; name: string; priceEur: number; appreciates: boolean },
+  ): Collectible {
+    const price = product.priceEur;
     const rng = this.context.stream('economy.luxury');
     const kind: CollectibleKind =
       'category' in product && product.category === 'montre'
@@ -581,7 +593,6 @@ export class EconomySystem implements GameSystem {
       displayedAt: null,
     };
     this.collectibles.set(collectible.id, collectible);
-    this.record('courant', -price, 'luxe', `achat — ${product.name}`);
     return collectible;
   }
 
@@ -615,6 +626,13 @@ export class EconomySystem implements GameSystem {
   buyVehicle(definitionId: string, garageVenueId: string | null = null): OwnedVehicle | null {
     const definition: VehicleDef = getVehicle(definitionId);
     if (!this.canAfford(definition.priceEur, 'courant')) return null;
+    this.record('courant', -definition.priceEur, 'véhicule', `achat — ${definition.name}`);
+    return this.registerVehicle(definitionId, garageVenueId);
+  }
+
+  /** Inscrit au garage un véhicule déjà payé (commande livrée en concession). */
+  registerVehicle(definitionId: string, garageVenueId: string | null = null): OwnedVehicle {
+    const definition: VehicleDef = getVehicle(definitionId);
     const vehicle: OwnedVehicle = {
       id: `veh:${this.assetCounter++}`,
       definitionId,
@@ -627,7 +645,6 @@ export class EconomySystem implements GameSystem {
       acquiredAt: this.context.clock.absoluteMinutes,
     };
     this.vehicles.set(vehicle.id, vehicle);
-    this.record('courant', -definition.priceEur, 'véhicule', `achat — ${definition.name}`);
     return vehicle;
   }
 

@@ -141,6 +141,61 @@ export type { Relation, RelationKind, Vacation, CharityProject } from './life/li
 export { PhoneSystem, PHONE_SERVICE, APPS } from './phone/phone-system.js';
 export type { AppId, AppDefinition, SocialPost, Streak, AgendaEntry } from './phone/phone-system.js';
 
+// Physique du gameplay (Tome III)
+export {
+  createBall,
+  strikeBall,
+  deflectBall,
+  stepBall,
+  predictBall,
+  timeToGround,
+  ballSpeed,
+  ballSpeedKmh,
+  airDensity,
+  restitutionFor,
+  rollingFriction,
+  PERFECT_SURFACE,
+  STILL_AIR,
+  BALL_MASS_KG,
+  BALL_RADIUS_M,
+} from './football/ball.js';
+export type { Ball, SurfaceState, AirState, MutableVec3 } from './football/ball.js';
+export {
+  PITCH_LENGTH,
+  PITCH_WIDTH,
+  GOAL_WIDTH,
+  GOAL_HEIGHT,
+  CENTRE,
+  goalCentre,
+  penaltySpot,
+  inPenaltyArea,
+  inGoalArea,
+  distanceToGoal,
+  shootingAngle,
+  expectedGoalsFromPosition,
+  isGoal,
+  hitsWoodwork,
+  outByTouchline,
+  outByGoalLine,
+  restartFor,
+  thirdOf,
+  channelOf,
+  heatmapZone,
+  clampToPitch,
+} from './football/pitch.js';
+export type { Side, PitchThird, PitchChannel } from './football/pitch.js';
+export {
+  createBody,
+  physicalProfile,
+  stepBody,
+  speedOf,
+  availableTopSpeed,
+  resolveContact,
+  shieldingStrength,
+  timeToReach,
+} from './football/player-physics.js';
+export type { PlayerBody, PhysicalProfile } from './football/player-physics.js';
+
 // Football de rue
 export { StreetFootballSystem, STREET_SERVICE } from './street/street-system.js';
 export type {
